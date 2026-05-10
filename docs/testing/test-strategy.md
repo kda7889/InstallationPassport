@@ -1,11 +1,16 @@
-# Test Strategy
+# Test strategy (MVP)
 
-## Layers
-- **Lint/Syntax:** `php -l` по всем файлам.
-- **Feature smoke:** ручной сценарий login -> create -> items -> upload -> generate/download pdf.
-- **Security checks:** ACL отрицательные сценарии, CSRF negative tests, upload negative tests.
+## Автопроверки
 
-## Minimum CI checks (planned)
-- php syntax check
-- static analysis
-- route smoke via HTTP client
+- `find app public -name '*.php' -print0 | xargs -0 -n1 php -l`
+- `php scripts/preflight.php`
+
+## Smoke (ручной)
+
+- Сценарий из `docs/operations/runbook.md`.
+
+## Что добавить следующим шагом
+
+- PHPStan/Psalm для статанализа.
+- Минимальные feature-тесты (login, create installation, upload photo, generate pdf).
+- CI pipeline с запуском lint + preflight в тестовом контейнере.

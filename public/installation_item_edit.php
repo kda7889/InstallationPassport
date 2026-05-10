@@ -98,7 +98,11 @@ $photos = $photosStmt->fetchAll();
 </form>
 <div class="row mt-3">
 <?php foreach ($photos as $photo): ?>
-<div class="col-6 mb-3"><div class="card"><img src="/download_photo.php?id=<?= (int)$photo['id'] ?>" class="card-img-top" alt="thumb"><div class="card-body p-2"><div class="small"><?= h((string)$photo['title']) ?></div><a class="btn btn-sm btn-outline-danger mt-2" href="/photo_delete.php?id=<?= (int)$photo['id'] ?>">Удалить</a></div></div></div>
+<div class="col-6 mb-3"><div class="card"><img src="/download_photo.php?id=<?= (int)$photo['id'] ?>" class="card-img-top" alt="thumb"><div class="card-body p-2"><div class="small"><?= h((string)$photo['title']) ?></div><form method="post" action="/photo_delete.php" class="mt-2">
+<input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
+<input type="hidden" name="id" value="<?= (int) $photo['id'] ?>">
+<button class="btn btn-sm btn-outline-danger" type="submit">Удалить</button>
+</form></div></div></div>
 <?php endforeach; ?>
 </div>
 <?php endif; ?>

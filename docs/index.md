@@ -1,43 +1,36 @@
-# МонтажПаспорт — LLM Wiki
+# МонтажПаспорт — документация
 
-Этот каталог оформлен по принципу **Karpathy LLM Wiki**:
-- атомарные файлы (одна идея = один файл),
-- явные связи между файлами,
-- журнал изменений и противоречий,
-- дорожная карта и decision log.
+## Старт
 
-## Карта разделов
-
-- `cards.md` — навигационные карточки знаний.
-- `log.md` — хронологический журнал изменений документации.
-- `contradictions.md` — выявленные противоречия/долги и способы устранения.
-- `roadmap.md` — план развития по фазам.
+- `README.md` — быстрый запуск.
+- `docs/operations/deploy-php-hosting.md` — чеклист деплоя.
+- `docs/operations/runbook.md` — smoke и инциденты.
+- `docs/testing/test-strategy.md` — как проверять проект.
 
 ## Архитектура
-- `architecture/domain-model.md`
-- `architecture/data-flow.md`
-- `architecture/storage-layout.md`
 
-## Продукт
-- `product/mvp-scope.md`
-- `product/roles-and-access.md`
-- `product/mobile-first-ux.md`
-- `product/photo-checklist.md`
-
-## Безопасность
-- `security/threat-model.md`
-- `security/auth-and-sessions.md`
-- `security/file-upload-policy.md`
+- `docs/architecture/domain-model.md`
+- `docs/architecture/data-flow.md`
+- `docs/architecture/storage-layout.md`
 
 ## API / страницы
-- `api/routes.md`
-- `api/form-contracts.md`
+
+- `docs/api/routes.md`
+- `docs/api/form-contracts.md`
+
+## Безопасность
+
+- `docs/security/auth-and-sessions.md`
+- `docs/security/file-upload-policy.md`
+- `docs/security/threat-model.md`
+
+## Продукт
+
+- `docs/product/mvp-scope.md`
+- `docs/product/roles-and-access.md`
+- `docs/product/mobile-first-ux.md`
+- `docs/product/photo-checklist.md`
 
 ## Эксплуатация
-- `operations/deploy-php-hosting.md`
-- `operations/runbook.md`
 
-## Решения и тестирование
-- `decisions/adr-0001-installation-item-model.md`
-- `decisions/adr-0002-image-storage-jpeg-only.md`
-- `testing/test-strategy.md`
+- `scripts/preflight.php` — автоматическая проверка готовности окружения.

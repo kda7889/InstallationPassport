@@ -48,13 +48,14 @@ $html = render_installation_pdf_html($installation, $items, $commonPhotos, $item
 $paths = ensure_installation_dirs((string) $installation['number']);
 $pdfFile = $paths['base'] . '/documents/warranty_' . $installation['number'] . '_' . date('Ymd_His') . '.pdf';
 
-if (class_exists('Mpdf\\Mpdf')) {
-    $mpdf = new Mpdf\Mpdf(['tempDir' => dirname(__DIR__) . '/storage/tmp']);
-    $mpdf->WriteHTML($html);
-    $mpdf->Output($pdfFile, \Mpdf\Output\Destination::FILE);
-} else {
-    file_put_contents($pdfFile, $html);
+if (!class_exists('Mpdf\\Mpdf')) {
+    http_response_code(500);
+    exit('mPDF не установлен. Выполните composer require mpdf/mpdf');
 }
+
+$mpdf = new Mpdf\Mpdf(['tempDir' => dirname(__DIR__) . '/storage/tmp']);
+$mpdf->WriteHTML($html);
+$mpdf->Output($pdfFile, \Mpdf\Output\Destination::FILE);
 
 $rel = str_replace(dirname(__DIR__) . '/', '', $pdfFile);
 db()->prepare('UPDATE installations SET pdf_path=:pdf_path, status=:status, updated_at=:updated_at WHERE id=:id')->execute([

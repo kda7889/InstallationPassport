@@ -6,7 +6,17 @@ require_once __DIR__ . '/../app/bootstrap.php';
 require_auth();
 $user = current_user();
 
-$id = (int) ($_GET['id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit('Method not allowed');
+}
+
+if (!csrf_validate(post('_csrf'))) {
+    http_response_code(400);
+    exit('CSRF error');
+}
+
+$id = (int) post('id', '0');
 $stmt = db()->prepare('SELECT p.*, i.user_id FROM installation_photos p JOIN installations i ON i.id = p.installation_id WHERE p.id=:id');
 $stmt->execute(['id' => $id]);
 $photo = $stmt->fetch();
@@ -21,4 +31,8 @@ $dbs = db()->prepare('DELETE FROM installation_photos WHERE id = :id');
 $dbs->execute(['id' => $id]);
 
 $itemId = (int) ($photo['installation_item_id'] ?? 0);
-redirect('/installation_item_edit.php?id=' . $itemId);
+if ($itemId > 0) {
+    redirect('/installation_item_edit.php?id=' . $itemId);
+}
+
+redirect('/installation_edit.php?id=' . (int) $photo['installation_id']);

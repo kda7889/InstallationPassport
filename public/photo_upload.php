@@ -30,6 +30,18 @@ if (!$installation || !can_access_installation($user, $installation)) {
     exit('Forbidden');
 }
 
+$itemNumber = 'common';
+if ($scope === 'item') {
+    $itemStmt = db()->prepare('SELECT id, item_number FROM installation_items WHERE id=:id AND installation_id=:installation_id');
+    $itemStmt->execute(['id' => $itemId, 'installation_id' => $installationId]);
+    $item = $itemStmt->fetch();
+    if (!$item) {
+        http_response_code(400);
+        exit('Item not found');
+    }
+    $itemNumber = (string) $item['item_number'];
+}
+
 if (!isset($_FILES['photo']) || !is_array($_FILES['photo'])) {
     http_response_code(400);
     exit('No file');
@@ -52,7 +64,7 @@ $mime = (string) $finfo->file((string) $file['tmp_name']);
 $allowed = ['image/jpeg', 'image/png', 'image/webp'];
 if (!in_array($mime, $allowed, true)) {
     http_response_code(400);
-    exit('Unsupported format. HEIC is not supported yet.');
+    exit('Формат HEIC пока не поддерживается. Отправьте фото в JPG или измените настройки камеры iPhone на "Наиболее совместимые".');
 }
 
 $source = image_load_by_mime((string) $file['tmp_name'], $mime);
@@ -60,12 +72,12 @@ if (!$source) {
     http_response_code(400);
     exit('Cannot read image');
 }
+
 $source = image_fix_orientation((string) $file['tmp_name'], $source);
 $full = image_resize($source, (int) $config['image_max_side']);
 $thumb = image_resize($source, (int) $config['thumb_max_side']);
 
 $installationNumber = (string) $installation['number'];
-$itemNumber = $scope === 'common' ? 'common' : sprintf('item-%04d', max(1, $itemId));
 $dt = date('Ymd_His');
 $rand = bin2hex(random_bytes(2));
 $fileName = sprintf('%s_%s_%s_%s_%s.jpg', $installationNumber, $itemNumber, preg_replace('/[^a-z0-9_\-]/i', '_', $photoCode), $dt, $rand);
@@ -109,4 +121,7 @@ $stmt->execute([
     'uploaded_at' => now(),
 ]);
 
+if ($scope === 'common') {
+    redirect('/installation_edit.php?id=' . $installationId);
+}
 redirect('/installation_item_edit.php?id=' . $itemId);
