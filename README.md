@@ -24,7 +24,7 @@
 5. Убедитесь, что `storage/` доступна на запись веб-пользователю.
 6. Откройте `/login.php`.
 
-> При первом запуске БД создаётся автоматически, а также создаётся дефолтный админ: `admin@example.com / admin123`.
+> При первом запуске БД создаётся автоматически и создаётся дефолтный админ `admin@example.com` со случайным паролем — пароль будет записан в `storage/initial-admin-credentials.txt` (зайдите, смените пароль и удалите файл). Можно заранее задать креды через переменные окружения `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
 
 ## Проверка перед запуском в прод
 
@@ -35,6 +35,7 @@
 ## Документация
 
 - Главный индекс: `docs/index.md`
-- Деплой: `docs/operations/deploy-php-hosting.md`
+- Деплой на HestiaCP: `docs/operations/deploy-hestia.md`
+- Деплой на обычный PHP-хостинг: `docs/operations/deploy-php-hosting.md`
 - Runbook: `docs/operations/runbook.md`
 - Тест-стратегия: `docs/testing/test-strategy.md`
