@@ -65,7 +65,70 @@ function db_migrate_schema(): void
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id, created_at DESC)');
 
+    $pdo->exec('CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )');
+
+    db_seed_photo_templates();
+
     $done = true;
+}
+
+function db_seed_photo_templates(): void
+{
+    $pdo = db();
+    $seeds = [
+        'electric' => [
+            ['electric_panel_general', 'Электрощит — общий вид', 1, 10],
+            ['breakers_labeled', 'Маркировка автоматов', 1, 20],
+            ['ground_connection', 'Заземление', 1, 30],
+            ['cable_routing', 'Прокладка кабеля', 0, 40],
+            ['meter_reading', 'Показания счётчика', 0, 50],
+        ],
+        'plumbing' => [
+            ['pipe_routing', 'Прокладка труб', 1, 10],
+            ['pressure_test', 'Опрессовка системы', 1, 20],
+            ['shutoff_valves', 'Запорная арматура', 1, 30],
+            ['meter_install', 'Узел учёта воды', 0, 40],
+            ['leak_check', 'Проверка на протечки', 0, 50],
+        ],
+        'ventilation' => [
+            ['duct_routing', 'Прокладка воздуховодов', 1, 10],
+            ['equipment_install', 'Установка оборудования', 1, 20],
+            ['grilles_installed', 'Решётки на местах', 0, 30],
+            ['airflow_measure', 'Замер расхода воздуха', 0, 40],
+        ],
+        'cctv_access' => [
+            ['camera_locations', 'Расположение камер', 1, 10],
+            ['nvr_installed', 'Установка регистратора', 1, 20],
+            ['cable_routing', 'Кабельные трассы', 0, 30],
+            ['ui_demo', 'Демонстрация ПО заказчику', 0, 40],
+        ],
+    ];
+
+    $wt = $pdo->query('SELECT id, code FROM work_types')->fetchAll();
+    $byCode = [];
+    foreach ($wt as $r) {
+        $byCode[$r['code']] = (int) $r['id'];
+    }
+
+    $insert = $pdo->prepare("INSERT INTO photo_templates (work_type_id, scope, code, title, is_important, sort_order, is_active) VALUES (:work_type_id, 'item', :code, :title, :is_important, :sort_order, 1) ON CONFLICT(work_type_id, scope, code) DO NOTHING");
+
+    foreach ($seeds as $workCode => $rows) {
+        if (!isset($byCode[$workCode])) {
+            continue;
+        }
+        foreach ($rows as [$code, $title, $important, $sort]) {
+            $insert->execute([
+                'work_type_id' => $byCode[$workCode],
+                'code' => $code,
+                'title' => $title,
+                'is_important' => $important,
+                'sort_order' => $sort,
+            ]);
+        }
+    }
 }
 
 function db_bootstrap_if_needed(): void

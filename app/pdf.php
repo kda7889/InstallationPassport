@@ -5,6 +5,7 @@ declare(strict_types=1);
 function render_installation_pdf_html(array $installation, array $items, array $commonPhotos, array $itemPhotosMap, ?string $verifyBaseUrl = null): string
 {
     $root = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
+    $branding = company_branding();
 
     $photoHtml = static function (array $photo) use ($root): string {
         $rel = (string) ($photo['thumb_path'] ?? $photo['file_path'] ?? '');
@@ -18,15 +19,62 @@ function render_installation_pdf_html(array $installation, array $items, array $
         return '<img src="' . h($abs) . '" style="width:260px;">';
     };
 
+    $logoAbs = '';
+    if (!empty($branding['logo_path'])) {
+        $candidate = $root . '/' . ltrim((string) $branding['logo_path'], '/');
+        if (is_file($candidate)) {
+            $logoAbs = $candidate;
+        }
+    }
+
+    $warrantyUntilFmt = '';
+    if (!empty($installation['warranty_until'])) {
+        $ts = strtotime((string) $installation['warranty_until']);
+        if ($ts !== false) {
+            $warrantyUntilFmt = date('d.m.Y', $ts);
+        }
+    }
+
     ob_start();
     ?>
-    <h1>ГАРАНТИЙНЫЙ ТАЛОН</h1>
+    <table style="width:100%; border-bottom:1px solid #999; margin-bottom:10px;">
+        <tr>
+            <td style="vertical-align:middle; width:140px;">
+                <?php if ($logoAbs !== ''): ?>
+                    <img src="<?= h($logoAbs) ?>" style="max-width:130px; max-height:80px;">
+                <?php endif; ?>
+            </td>
+            <td style="vertical-align:middle; padding-left:10px;">
+                <?php if (!empty($branding['name'])): ?>
+                    <div style="font-size:13pt; font-weight:bold;"><?= h((string) $branding['name']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($branding['inn'])): ?>
+                    <div style="font-size:9pt; color:#444;">ИНН/ОГРН: <?= h((string) $branding['inn']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($branding['phone']) || !empty($branding['email'])): ?>
+                    <div style="font-size:9pt; color:#444;">
+                        <?= h((string) $branding['phone']) ?>
+                        <?php if (!empty($branding['email'])): ?> · <?= h((string) $branding['email']) ?><?php endif; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if (!empty($branding['address'])): ?>
+                    <div style="font-size:9pt; color:#444;"><?= h((string) $branding['address']) ?></div>
+                <?php endif; ?>
+            </td>
+        </tr>
+    </table>
+
+    <h1 style="margin-top:5px;">ГАРАНТИЙНЫЙ ТАЛОН</h1>
     <p><strong>Номер талона:</strong> <?= h((string) $installation['number']) ?></p>
-    <p><strong>Дата:</strong> <?= h((string) ($installation['install_date'] ?? '')) ?></p>
+    <p><strong>Дата монтажа:</strong> <?= h(date('d.m.Y', strtotime((string) ($installation['install_date'] ?: 'today')))) ?></p>
     <p><strong>Тип работ:</strong> <?= h((string) ($installation['work_type_name'] ?? '')) ?></p>
     <p><strong>Адрес:</strong> <?= h((string) $installation['address']) ?></p>
     <p><strong>Заказчик:</strong> <?= h((string) ($installation['customer_name'] ?? '')) ?>, <?= h((string) ($installation['customer_phone'] ?? '')) ?></p>
     <p><strong>Исполнитель:</strong> <?= h((string) ($installation['installer_name'] ?? '')) ?>, <?= h((string) ($installation['installer_phone'] ?? '')) ?></p>
+    <p><strong>Срок гарантии:</strong> <?= (int) ($installation['warranty_months'] ?? 0) ?> мес.<?php if ($warrantyUntilFmt !== ''): ?>, действует до <strong><?= h($warrantyUntilFmt) ?></strong><?php endif; ?></p>
+    <?php if (!empty($installation['work_description'])): ?>
+        <p><strong>Описание работ:</strong><br><?= nl2br(h((string) $installation['work_description'])) ?></p>
+    <?php endif; ?>
     <hr>
     <h2>Состав оборудования</h2>
     <?php foreach ($items as $idx => $item): ?>
@@ -62,8 +110,8 @@ function render_installation_pdf_html(array $installation, array $items, array $
     $number = (string) $installation['number'];
     $code = (string) ($installation['verification_code'] ?? '');
     $generatedAt = date('d.m.Y H:i');
-    $verifyUrl = $verifyBaseUrl
-        ? rtrim($verifyBaseUrl, '/') . '/verify.php?n=' . urlencode($number) . '&c=' . urlencode($code)
+    $customerUrl = $verifyBaseUrl
+        ? rtrim($verifyBaseUrl, '/') . '/customer.php?n=' . urlencode($number) . '&c=' . urlencode($code)
         : null;
     ?>
 
@@ -75,11 +123,17 @@ function render_installation_pdf_html(array $installation, array $items, array $
                 <div>Номер: <strong><?= h($number) ?></strong></div>
                 <div>Код проверки: <strong><?= h($code) ?></strong></div>
                 <div>Сформирован: <?= h($generatedAt) ?></div>
-                <?php if ($verifyUrl): ?>
-                    <div style="margin-top:4px;">Сверить с базой: <?= h($verifyUrl) ?></div>
+                <?php if ($customerUrl): ?>
+                    <div style="margin-top:4px;">Онлайн-копия с фото: <?= h($customerUrl) ?></div>
                 <?php endif; ?>
                 <div style="margin-top:4px; color:#777;">Если кода нет в нашей базе — гарантийный талон поддельный.</div>
             </td>
+            <?php if ($customerUrl): ?>
+            <td style="width:120px; padding:8px; vertical-align:middle; text-align:center;">
+                <barcode code="<?= h($customerUrl) ?>" type="QR" size="0.9" error="M" />
+                <div style="font-size:7pt; color:#777; margin-top:2px;">сканируйте телефоном</div>
+            </td>
+            <?php endif; ?>
         </tr>
     </table>
     <?php

@@ -110,7 +110,7 @@ $renderPhotoCard = static function (array $photo): string {
     return <<<HTML
 <div class="col-6 col-md-4 mb-2">
     <div class="card h-100 shadow-sm">
-        <img src="/download_photo.php?id={$id}" class="card-img-top" alt="">
+        <img src="/download_photo.php?id={$id}" class="card-img-top photo-zoom" data-full="/download_photo.php?id={$id}&size=full" data-title="{$title}" style="cursor:zoom-in;" alt="">
         <div class="card-body p-2">
             <div class="small text-truncate mb-1" title="{$title}">{$title}</div>
             <form method="post" action="/photo_delete.php" onsubmit="return confirm('Удалить фото?')">
@@ -254,5 +254,28 @@ HTML;
 <?php endif; ?>
 
 </div>
+
+<div class="modal fade" id="photoLightbox" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark">
+            <div class="modal-body p-2 text-center">
+                <img id="photoLightboxImg" src="" alt="" style="max-width:100%; max-height:85vh;">
+                <div id="photoLightboxTitle" class="text-light mt-2 small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains('photo-zoom')) {
+        document.getElementById('photoLightboxImg').src = t.dataset.full || t.src;
+        document.getElementById('photoLightboxTitle').textContent = t.dataset.title || '';
+        new bootstrap.Modal(document.getElementById('photoLightbox')).show();
+    }
+});
+</script>
 </body>
 </html>

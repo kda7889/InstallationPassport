@@ -16,15 +16,31 @@ if (!$installation || !can_access_installation($user, $installation)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
-    $upd = db()->prepare('UPDATE installations SET customer_name=:customer_name, customer_phone=:customer_phone, installer_name=:installer_name, installer_phone=:installer_phone, company_name=:company_name, company_inn=:company_inn, warranty_months=:warranty_months, work_description=:work_description, comment=:comment, status=:status, updated_at=:updated_at WHERE id=:id');
+    $installDate = (string) post('install_date', (string) ($installation['install_date'] ?? ''));
+    if ($installDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $installDate)) {
+        $installDate = (string) ($installation['install_date'] ?? '');
+    }
+    $warrantyMonths = (int) post('warranty_months', '12');
+    $warrantyUntil = null;
+    if ($installDate !== '' && $warrantyMonths > 0) {
+        try {
+            $warrantyUntil = (new DateTimeImmutable($installDate))->modify('+' . $warrantyMonths . ' months')->format('Y-m-d');
+        } catch (Throwable $e) {
+            $warrantyUntil = null;
+        }
+    }
+
+    $upd = db()->prepare('UPDATE installations SET install_date=:install_date, customer_name=:customer_name, customer_phone=:customer_phone, installer_name=:installer_name, installer_phone=:installer_phone, company_name=:company_name, company_inn=:company_inn, warranty_months=:warranty_months, warranty_until=:warranty_until, work_description=:work_description, comment=:comment, status=:status, updated_at=:updated_at WHERE id=:id');
     $upd->execute([
+        'install_date' => $installDate,
         'customer_name' => (string) post('customer_name', ''),
         'customer_phone' => (string) post('customer_phone', ''),
         'installer_name' => (string) post('installer_name', ''),
         'installer_phone' => (string) post('installer_phone', ''),
         'company_name' => (string) post('company_name', ''),
         'company_inn' => (string) post('company_inn', ''),
-        'warranty_months' => (int) post('warranty_months', '12'),
+        'warranty_months' => $warrantyMonths,
+        'warranty_until' => $warrantyUntil,
         'work_description' => (string) post('work_description', ''),
         'comment' => (string) post('comment', ''),
         'status' => (string) post('status', 'draft'),
@@ -100,7 +116,7 @@ $renderPhotoCard = static function (array $photo): string {
     return <<<HTML
 <div class="col-6 col-md-4 mb-2">
     <div class="card h-100 shadow-sm">
-        <img src="/download_photo.php?id={$id}" class="card-img-top" alt="">
+        <img src="/download_photo.php?id={$id}" class="card-img-top photo-zoom" data-full="/download_photo.php?id={$id}&size=full" data-title="{$title}" style="cursor:zoom-in;" alt="">
         <div class="card-body p-2">
             <div class="small text-truncate mb-1" title="{$title}">{$title}</div>
             <form method="post" action="/photo_delete.php" onsubmit="return confirm('Удалить фото?')">
@@ -172,8 +188,15 @@ HTML;
         <input class="form-control mb-3" name="company_inn" value="<?= h((string) ($installation['company_inn'] ?? '')) ?>">
 
         <h2 class="h6 text-muted mb-3">Гарантия и работы</h2>
+        <label class="form-label">Дата монтажа</label>
+        <input class="form-control mb-2" type="date" name="install_date" value="<?= h((string) ($installation['install_date'] ?? '')) ?>">
+
         <label class="form-label">Срок гарантии (мес.)</label>
         <input class="form-control mb-2" type="number" min="1" name="warranty_months" value="<?= h((string) ($installation['warranty_months'] ?? 12)) ?>">
+
+        <?php if (!empty($installation['warranty_until'])): ?>
+            <div class="small text-muted mb-2">Гарантия действует до <strong><?= h(date('d.m.Y', strtotime((string) $installation['warranty_until']))) ?></strong></div>
+        <?php endif; ?>
 
         <label class="form-label">Описание работ</label>
         <textarea class="form-control mb-2" rows="3" name="work_description"><?= h((string) ($installation['work_description'] ?? '')) ?></textarea>
@@ -284,5 +307,28 @@ HTML;
     </div>
 
 </div>
+
+<div class="modal fade" id="photoLightbox" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark">
+            <div class="modal-body p-2 text-center">
+                <img id="photoLightboxImg" src="" alt="" style="max-width:100%; max-height:85vh;">
+                <div id="photoLightboxTitle" class="text-light mt-2 small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains('photo-zoom')) {
+        document.getElementById('photoLightboxImg').src = t.dataset.full || t.src;
+        document.getElementById('photoLightboxTitle').textContent = t.dataset.title || '';
+        new bootstrap.Modal(document.getElementById('photoLightbox')).show();
+    }
+});
+</script>
 </body>
 </html>

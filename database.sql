@@ -137,6 +137,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
 INSERT INTO work_types (code, name, description, sort_order) VALUES
 ('air_conditioner', 'Монтаж кондиционера', 'Монтаж сплит-систем и мульти-сплит систем', 10),
 ('electric', 'Электромонтаж', 'Электрощиты, линии, автоматы, освещение', 20),
