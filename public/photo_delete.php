@@ -30,6 +30,11 @@ if (!$photo || (($user['role'] ?? '') !== 'admin' && (int) $photo['user_id'] !==
 $dbs = db()->prepare('DELETE FROM installation_photos WHERE id = :id');
 $dbs->execute(['id' => $id]);
 
+audit_log('photo.deleted', 'photo', $id, [
+    'installation_id' => (int) $photo['installation_id'],
+    'installation_item_id' => (int) ($photo['installation_item_id'] ?? 0),
+]);
+
 $itemId = (int) ($photo['installation_item_id'] ?? 0);
 if ($itemId > 0) {
     redirect('/installation_item_edit.php?id=' . $itemId);

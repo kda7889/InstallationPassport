@@ -10,11 +10,21 @@ if (current_user()) {
 
 $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $ip = client_ip();
+    $email = (string) post('email', '');
+
     if (!csrf_validate(post('_csrf'))) {
         $error = 'Ошибка CSRF. Обновите страницу.';
-    } elseif (attempt_login((string) post('email', ''), (string) post('password', ''))) {
+    } elseif (login_rate_limit_block($ip)) {
+        $error = 'Слишком много неудачных попыток. Попробуйте через 5 минут.';
+        audit_log('login.blocked', null, null, ['email' => $email, 'ip' => $ip]);
+    } elseif (attempt_login($email, (string) post('password', ''))) {
+        record_login_attempt($ip, $email, true);
+        audit_log('login.success', 'user', (int) (current_user()['id'] ?? 0));
         redirect('/dashboard.php');
     } else {
+        record_login_attempt($ip, $email, false);
+        audit_log('login.failed', null, null, ['email' => $email]);
         $error = 'Неверный логин или пароль.';
     }
 }

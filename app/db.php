@@ -25,6 +25,10 @@ function db(): PDO
 
 function db_migrate_schema(): void
 {
+    static $done = false;
+    if ($done) {
+        return;
+    }
     $pdo = db();
 
     $hasVerification = false;
@@ -38,6 +42,30 @@ function db_migrate_schema(): void
         $pdo->exec('ALTER TABLE installations ADD COLUMN verification_code TEXT');
         $pdo->exec("UPDATE installations SET verification_code = lower(hex(randomblob(6))) WHERE verification_code IS NULL OR verification_code = ''");
     }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS login_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip TEXT NOT NULL,
+        email TEXT,
+        success INTEGER NOT NULL DEFAULT 0,
+        attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts(ip, attempted_at)');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        action TEXT NOT NULL,
+        entity_type TEXT,
+        entity_id INTEGER,
+        metadata TEXT,
+        ip TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id, created_at DESC)');
+
+    $done = true;
 }
 
 function db_bootstrap_if_needed(): void

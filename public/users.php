@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                    audit_log('user.created', 'user', (int) db()->lastInsertId(), ['email' => $email, 'role' => $role]);
                     redirect('/users.php');
                 } catch (Throwable $e) {
                     $error = 'Пользователь с таким email уже существует.';
@@ -52,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'updated_at' => now(),
                     'id' => $targetId,
                 ]);
+                audit_log('user.toggled', 'user', $targetId);
                 redirect('/users.php');
             }
         }
@@ -67,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'updated_at' => now(),
                     'id' => $targetId,
                 ]);
+                audit_log('user.password_changed', 'user', $targetId);
                 redirect('/users.php');
             }
         }

@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
         'updated_at' => now(),
         'id' => $id,
     ]);
+    audit_log('installation.updated', 'installation', $id);
     redirect('/installation_edit.php?id=' . $id);
 }
 
@@ -63,11 +64,19 @@ $warningStmt = db()->prepare("SELECT code, title FROM photo_templates WHERE work
 $warningStmt->execute(['wt' => $installation['work_type_id']]);
 $importantTemplates = $warningStmt->fetchAll();
 
+$codesByItem = [];
+if ($items && $importantTemplates) {
+    $itemIds = array_map('intval', array_column($items, 'id'));
+    $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+    $codesStmt = db()->prepare("SELECT installation_item_id, photo_code FROM installation_photos WHERE installation_item_id IN ($placeholders)");
+    $codesStmt->execute($itemIds);
+    foreach ($codesStmt->fetchAll() as $row) {
+        $codesByItem[(int) $row['installation_item_id']][] = $row['photo_code'];
+    }
+}
 $missingImportant = [];
 foreach ($items as $it) {
-    $codesStmt = db()->prepare('SELECT photo_code FROM installation_photos WHERE installation_item_id = :item_id');
-    $codesStmt->execute(['item_id' => $it['id']]);
-    $codes = array_column($codesStmt->fetchAll(), 'photo_code');
+    $codes = $codesByItem[(int) $it['id']] ?? [];
     foreach ($importantTemplates as $tpl) {
         if (!in_array($tpl['code'], $codes, true)) {
             $missingImportant[] = $it['title'] . ': ' . $tpl['title'];

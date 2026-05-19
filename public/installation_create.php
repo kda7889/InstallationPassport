@@ -19,9 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($workTypeId <= 0 || $address === '') {
             $error = 'Выберите тип работ и укажите адрес.';
         } else {
-            $pdo = $insertStmt = null;
             $number = null;
-
             $pdo = db();
             $insertStmt = $pdo->prepare('INSERT INTO installations (number, work_type_id, user_id, install_date, address, status, verification_code, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :install_date, :address, :status, :verification_code, :created_at, :updated_at)');
 
@@ -53,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Не удалось сгенерировать номер монтажа, попробуйте ещё раз.';
             } else {
                 ensure_installation_dirs($number);
+                audit_log('installation.created', 'installation', (int) $pdo->lastInsertId(), ['number' => $number, 'work_type_id' => $workTypeId]);
                 redirect('/dashboard.php');
             }
         }

@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
     if ($item) {
         $upd = db()->prepare('UPDATE installation_items SET title=:title, location=:location, brand=:brand, model=:model, extra_data_json=:extra, updated_at=:updated_at WHERE id=:id');
         $upd->execute(['title' => $title, 'location' => $location, 'brand' => $brand, 'model' => $model, 'extra' => $extra, 'updated_at' => now(), 'id' => $itemId]);
+        audit_log('item.updated', 'installation_item', $itemId, ['installation_id' => $installationId]);
         redirect('/installation_item_edit.php?id=' . $itemId);
     }
 
@@ -73,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
         $pdo->rollBack();
         throw $e;
     }
+    audit_log('item.created', 'installation_item', $newId, ['installation_id' => $installationId]);
     redirect('/installation_item_edit.php?id=' . $newId);
 }
 

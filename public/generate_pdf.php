@@ -24,11 +24,15 @@ $commonStmt = db()->prepare("SELECT * FROM installation_photos WHERE installatio
 $commonStmt->execute(['id' => $id]);
 $commonPhotos = $commonStmt->fetchAll();
 
-$itemPhotosMap = [];
-foreach ($items as $item) {
-    $ps = db()->prepare("SELECT * FROM installation_photos WHERE installation_item_id=:item_id ORDER BY uploaded_at");
-    $ps->execute(['item_id' => $item['id']]);
-    $itemPhotosMap[(int) $item['id']] = $ps->fetchAll();
+$itemPhotosMap = array_fill_keys(array_map('intval', array_column($items, 'id')), []);
+if ($items) {
+    $itemIds = array_map('intval', array_column($items, 'id'));
+    $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+    $ps = db()->prepare("SELECT * FROM installation_photos WHERE installation_item_id IN ($placeholders) ORDER BY uploaded_at");
+    $ps->execute($itemIds);
+    foreach ($ps->fetchAll() as $row) {
+        $itemPhotosMap[(int) $row['installation_item_id']][] = $row;
+    }
 }
 
 $missingImportant = [];
@@ -79,5 +83,6 @@ db()->prepare('INSERT INTO generated_documents (installation_id, document_type, 
     'created_at' => now(),
 ]);
 
-$_SESSION['pdf_warning'] = $missingImportant;
+audit_log('pdf.generated', 'installation', $id, ['number' => $installation['number'], 'missing' => $missingImportant]);
+
 redirect('/download_pdf.php?id=' . $id);

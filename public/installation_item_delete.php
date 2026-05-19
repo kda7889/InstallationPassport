@@ -36,4 +36,6 @@ foreach ($photosStmt->fetchAll() as $photo) {
 
 db()->prepare('DELETE FROM installation_items WHERE id = :id')->execute(['id' => $itemId]);
 
+audit_log('item.deleted', 'installation_item', $itemId, ['installation_id' => (int) $row['installation_id']]);
+
 redirect('/installation_edit.php?id=' . (int) $row['installation_id']);
