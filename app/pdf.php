@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function render_installation_pdf_html(array $installation, array $items, array $commonPhotos, array $itemPhotosMap): string
+function render_installation_pdf_html(array $installation, array $items, array $commonPhotos, array $itemPhotosMap, ?string $verifyBaseUrl = null): string
 {
     $root = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
 
@@ -57,6 +57,31 @@ function render_installation_pdf_html(array $installation, array $items, array $
             <?php endforeach; ?>
         <?php endif; ?>
     <?php endforeach; ?>
+
+    <?php
+    $number = (string) $installation['number'];
+    $code = (string) ($installation['verification_code'] ?? '');
+    $generatedAt = date('d.m.Y H:i');
+    $verifyUrl = $verifyBaseUrl
+        ? rtrim($verifyBaseUrl, '/') . '/verify.php?n=' . urlencode($number) . '&c=' . urlencode($code)
+        : null;
+    ?>
+
+    <hr>
+    <table style="margin-top:20px; font-size:9pt; color:#444; border:1px solid #999; padding:0; width:100%;">
+        <tr>
+            <td style="padding:8px; vertical-align:top;">
+                <div><strong>Подлинность документа</strong></div>
+                <div>Номер: <strong><?= h($number) ?></strong></div>
+                <div>Код проверки: <strong><?= h($code) ?></strong></div>
+                <div>Сформирован: <?= h($generatedAt) ?></div>
+                <?php if ($verifyUrl): ?>
+                    <div style="margin-top:4px;">Сверить с базой: <?= h($verifyUrl) ?></div>
+                <?php endif; ?>
+                <div style="margin-top:4px; color:#777;">Если кода нет в нашей базе — гарантийный талон поддельный.</div>
+            </td>
+        </tr>
+    </table>
     <?php
     return (string) ob_get_clean();
 }

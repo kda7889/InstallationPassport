@@ -44,7 +44,12 @@ foreach ($items as $item) {
     }
 }
 
-$html = render_installation_pdf_html($installation, $items, $commonPhotos, $itemPhotosMap);
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+$host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+$verifyBaseUrl = $host !== '' ? $scheme . '://' . $host : null;
+
+$html = render_installation_pdf_html($installation, $items, $commonPhotos, $itemPhotosMap, $verifyBaseUrl);
 $paths = ensure_installation_dirs((string) $installation['number']);
 $pdfFile = $paths['base'] . '/documents/warranty_' . $installation['number'] . '_' . date('Ymd_His') . '.pdf';
 

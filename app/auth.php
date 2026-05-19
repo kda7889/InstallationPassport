@@ -37,6 +37,8 @@ function attempt_login(string $email, string $password): bool
         session_start();
     }
 
+    session_regenerate_id(true);
+
     $_SESSION['user'] = [
         'id' => (int) $user['id'],
         'name' => (string) $user['name'],

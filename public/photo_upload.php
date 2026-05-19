@@ -20,7 +20,10 @@ $installationId = (int) post('installation_id', '0');
 $itemId = (int) post('installation_item_id', '0');
 $scope = post('scope', 'item') === 'common' ? 'common' : 'item';
 $photoCode = (string) post('photo_code', 'other');
-$title = (string) post('title', 'Фото');
+$title = trim((string) post('title', ''));
+if ($title === '') {
+    $title = 'Фото';
+}
 
 $iStmt = db()->prepare('SELECT * FROM installations WHERE id = :id');
 $iStmt->execute(['id' => $installationId]);

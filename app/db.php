@@ -23,10 +23,28 @@ function db(): PDO
     return $pdo;
 }
 
+function db_migrate_schema(): void
+{
+    $pdo = db();
+
+    $hasVerification = false;
+    foreach ($pdo->query('PRAGMA table_info(installations)')->fetchAll() as $col) {
+        if (($col['name'] ?? '') === 'verification_code') {
+            $hasVerification = true;
+            break;
+        }
+    }
+    if (!$hasVerification) {
+        $pdo->exec('ALTER TABLE installations ADD COLUMN verification_code TEXT');
+        $pdo->exec("UPDATE installations SET verification_code = lower(hex(randomblob(6))) WHERE verification_code IS NULL OR verification_code = ''");
+    }
+}
+
 function db_bootstrap_if_needed(): void
 {
     $exists = db()->query("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")->fetch();
     if ($exists) {
+        db_migrate_schema();
         return;
     }
 
@@ -61,4 +79,6 @@ function db_bootstrap_if_needed(): void
         "Войдите, смените пароль и удалите этот файл.\n"
     );
     @chmod($credPath, 0600);
+
+    db_migrate_schema();
 }

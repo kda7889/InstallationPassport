@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS installations (
   comment TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','in_progress','photos_partial','ready','pdf_generated','closed')),
   pdf_path TEXT,
+  verification_code TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(work_type_id) REFERENCES work_types(id),
