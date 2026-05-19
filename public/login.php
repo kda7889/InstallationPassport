@@ -41,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="password" name="password" class="form-control form-control-lg mb-3" required>
                 <button class="btn btn-primary btn-lg" type="submit">Войти</button>
             </form>
-            <p class="text-muted small mt-3">Демо: admin@example.com / admin123</p>
         </div>
     </div>
 </div>

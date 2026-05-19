@@ -18,19 +18,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Выберите тип работ и укажите адрес.';
         } else {
             $year = date('Y');
-            $count = (int) db()->query('SELECT COUNT(*) FROM installations')->fetchColumn() + 1;
-            $number = sprintf('MP-%s-%06d', $year, $count);
-            $stmt = db()->prepare('INSERT INTO installations (number, work_type_id, user_id, install_date, address, status, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :install_date, :address, :status, :created_at, :updated_at)');
-            $stmt->execute([
-                'number' => $number,
-                'work_type_id' => $workTypeId,
-                'user_id' => $user['id'],
-                'install_date' => date('Y-m-d'),
-                'address' => $address,
-                'status' => 'draft',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $pdo = db();
+            $pdo->beginTransaction();
+            try {
+                $tempNumber = 'MP-TMP-' . bin2hex(random_bytes(8));
+                $stmt = $pdo->prepare('INSERT INTO installations (number, work_type_id, user_id, install_date, address, status, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :install_date, :address, :status, :created_at, :updated_at)');
+                $stmt->execute([
+                    'number' => $tempNumber,
+                    'work_type_id' => $workTypeId,
+                    'user_id' => $user['id'],
+                    'install_date' => date('Y-m-d'),
+                    'address' => $address,
+                    'status' => 'draft',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $newId = (int) $pdo->lastInsertId();
+                $number = sprintf('MP-%s-%06d', $year, $newId);
+                $pdo->prepare('UPDATE installations SET number = :number WHERE id = :id')
+                    ->execute(['number' => $number, 'id' => $newId]);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
             ensure_installation_dirs($number);
             redirect('/dashboard.php');
         }
