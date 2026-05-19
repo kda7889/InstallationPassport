@@ -1,0 +1,8 @@
+/vendor/
+/storage/database.sqlite
+/storage/installations/
+/storage/tmp/
+/storage/initial-admin-credentials.txt
+composer.lock
+*.log
+.DS_Store
