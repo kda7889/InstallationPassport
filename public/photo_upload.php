@@ -139,8 +139,24 @@ if ($scope === 'common') {
 
 $fullPath = "$compressedDir/$fileName";
 $thumbPath = "$thumbDir/$fileName";
-imagejpeg($full, $fullPath, (int) $config['jpeg_quality']);
-imagejpeg($thumb, $thumbPath, (int) $config['jpeg_quality']);
+$quality = (int) $config['jpeg_quality'];
+if (!@imagejpeg($full, $fullPath, $quality) || !@imagejpeg($thumb, $thumbPath, $quality)) {
+    @unlink($fullPath);
+    @unlink($thumbPath);
+    imagedestroy($source);
+    imagedestroy($full);
+    imagedestroy($thumb);
+    http_response_code(500);
+    exit('Не удалось сохранить файл на диск. Проверьте права на storage/.');
+}
+
+$width = imagesx($full);
+$height = imagesy($full);
+$fileSize = (int) @filesize($fullPath);
+
+imagedestroy($source);
+imagedestroy($full);
+imagedestroy($thumb);
 
 $stmt = db()->prepare('INSERT INTO installation_photos (installation_id, installation_item_id, scope, photo_code, title, file_path, thumb_path, mime_type, file_size, width, height, uploaded_by, uploaded_at) VALUES (:installation_id,:installation_item_id,:scope,:photo_code,:title,:file_path,:thumb_path,:mime_type,:file_size,:width,:height,:uploaded_by,:uploaded_at)');
 $stmt->execute([
@@ -152,9 +168,9 @@ $stmt->execute([
     'file_path' => str_replace(dirname(__DIR__) . '/', '', $fullPath),
     'thumb_path' => str_replace(dirname(__DIR__) . '/', '', $thumbPath),
     'mime_type' => 'image/jpeg',
-    'file_size' => filesize($fullPath),
-    'width' => imagesx($full),
-    'height' => imagesy($full),
+    'file_size' => $fileSize,
+    'width' => $width,
+    'height' => $height,
     'uploaded_by' => $user['id'],
     'uploaded_at' => now(),
 ]);

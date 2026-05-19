@@ -62,7 +62,19 @@ if (!class_exists('Mpdf\\Mpdf')) {
     exit('mPDF не установлен. Выполните composer require mpdf/mpdf');
 }
 
-$mpdf = new Mpdf\Mpdf(['tempDir' => dirname(__DIR__) . '/storage/tmp']);
+$tmpDir = dirname(__DIR__) . '/storage/tmp';
+if (!is_dir($tmpDir) && !@mkdir($tmpDir, 0775, true) && !is_dir($tmpDir)) {
+    http_response_code(500);
+    exit('Не удалось создать ' . h($tmpDir));
+}
+
+$documentsDir = dirname($pdfFile);
+if (!is_dir($documentsDir) && !@mkdir($documentsDir, 0775, true) && !is_dir($documentsDir)) {
+    http_response_code(500);
+    exit('Не удалось создать ' . h($documentsDir));
+}
+
+$mpdf = new Mpdf\Mpdf(['tempDir' => $tmpDir]);
 $mpdf->WriteHTML($html);
 $mpdf->Output($pdfFile, \Mpdf\Output\Destination::FILE);
 

@@ -27,10 +27,14 @@ function login_rate_limit_block(string $ip): bool
     if ($ip === '') {
         return false;
     }
-    db()->exec("DELETE FROM login_attempts WHERE datetime(attempted_at) < datetime('now', '-1 hour')");
+    $hourAgo = (new DateTimeImmutable('-1 hour'))->format('Y-m-d H:i:s');
+    $fiveMinAgo = (new DateTimeImmutable('-5 minutes'))->format('Y-m-d H:i:s');
 
-    $stmt = db()->prepare("SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND success = 0 AND datetime(attempted_at) > datetime('now', '-5 minutes')");
-    $stmt->execute(['ip' => $ip]);
+    db()->prepare('DELETE FROM login_attempts WHERE attempted_at < :cutoff')
+        ->execute(['cutoff' => $hourAgo]);
+
+    $stmt = db()->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND success = 0 AND attempted_at > :cutoff');
+    $stmt->execute(['ip' => $ip, 'cutoff' => $fiveMinAgo]);
     return ((int) $stmt->fetchColumn()) >= 10;
 }
 

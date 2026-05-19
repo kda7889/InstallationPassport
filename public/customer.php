@@ -46,10 +46,8 @@ if ($number !== '' && $code !== '') {
 }
 
 $branding = company_branding();
-$root = dirname(__DIR__);
-$photoUrl = static function (array $photo) use ($root): string {
-    $rel = (string) ($photo['file_path'] ?? '');
-    return '/photo_public.php?n=' . urlencode((string) ($_GET['n'] ?? '')) . '&c=' . urlencode((string) ($_GET['c'] ?? '')) . '&p=' . (int) $photo['id'];
+$photoUrl = static function (array $photo) use ($number, $code): string {
+    return '/photo_public.php?n=' . urlencode($number) . '&c=' . urlencode($code) . '&p=' . (int) $photo['id'];
 };
 ?>
 <!doctype html>
@@ -67,7 +65,7 @@ $photoUrl = static function (array $photo) use ($root): string {
         <div class="card card-body shadow-sm mb-3">
             <div class="d-flex align-items-center">
                 <?php if (!empty($branding['logo_path'])): ?>
-                    <img src="/<?= h((string) $branding['logo_path']) ?>" alt="" style="max-height:60px; margin-right:12px;">
+                    <img src="/branding_logo.php" alt="" style="max-height:60px; margin-right:12px;">
                 <?php endif; ?>
                 <div>
                     <?php if (!empty($branding['name'])): ?>

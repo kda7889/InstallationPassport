@@ -113,7 +113,7 @@ $showOk = ($_GET['ok'] ?? '') === '1';
         <label class="form-label">Логотип (PNG / JPG / WebP, до 2 МБ)</label>
         <?php if (!empty($branding['logo_path'])): ?>
             <div class="mb-2">
-                <img src="/<?= h((string) $branding['logo_path']) ?>" alt="Текущий логотип" style="max-height:120px; background:#fff; border:1px solid #ddd; padding:8px;">
+                <img src="/branding_logo.php" alt="Текущий логотип" style="max-height:120px; background:#fff; border:1px solid #ddd; padding:8px;">
                 <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="rmlogo">
                     <label class="form-check-label" for="rmlogo">Удалить текущий логотип</label>
