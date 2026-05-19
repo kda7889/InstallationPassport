@@ -35,15 +35,19 @@ function render_installation_pdf_html(array $installation, array $items, array $
         }
     }
 
+    $hasBranding = $logoAbs !== '' || !empty($branding['name']) || !empty($branding['inn'])
+        || !empty($branding['phone']) || !empty($branding['email']) || !empty($branding['address']);
+
     ob_start();
     ?>
+    <?php if ($hasBranding): ?>
     <table style="width:100%; border-bottom:1px solid #999; margin-bottom:10px;">
         <tr>
-            <td style="vertical-align:middle; width:140px;">
-                <?php if ($logoAbs !== ''): ?>
+            <?php if ($logoAbs !== ''): ?>
+                <td style="vertical-align:middle; width:140px;">
                     <img src="<?= h($logoAbs) ?>" style="max-width:130px; max-height:80px;">
-                <?php endif; ?>
-            </td>
+                </td>
+            <?php endif; ?>
             <td style="vertical-align:middle; padding-left:10px;">
                 <?php if (!empty($branding['name'])): ?>
                     <div style="font-size:13pt; font-weight:bold;"><?= h((string) $branding['name']) ?></div>
@@ -63,6 +67,7 @@ function render_installation_pdf_html(array $installation, array $items, array $
             </td>
         </tr>
     </table>
+    <?php endif; ?>
 
     <h1 style="margin-top:5px;">ГАРАНТИЙНЫЙ ТАЛОН</h1>
     <p><strong>Номер талона:</strong> <?= h((string) $installation['number']) ?></p>

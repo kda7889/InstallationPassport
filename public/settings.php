@@ -22,24 +22,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
     set_setting('company_email', (string) post('company_email', ''));
 
     if (!empty($_FILES['logo']['tmp_name']) && (int) $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = (string) $finfo->file((string) $_FILES['logo']['tmp_name']);
-        if (!in_array($mime, ['image/png', 'image/jpeg', 'image/webp'], true)) {
-            $error = 'Логотип должен быть PNG, JPG или WebP.';
-        } elseif ((int) $_FILES['logo']['size'] > 2 * 1024 * 1024) {
-            $error = 'Логотип больше 2 МБ.';
+        if (!is_uploaded_file((string) $_FILES['logo']['tmp_name'])) {
+            $error = 'Некорректная загрузка файла.';
         } else {
-            $brandingDir = dirname(__DIR__) . '/storage/branding';
-            if (!is_dir($brandingDir)) {
-                mkdir($brandingDir, 0775, true);
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = (string) $finfo->file((string) $_FILES['logo']['tmp_name']);
+            if (!in_array($mime, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+                $error = 'Логотип должен быть PNG, JPG или WebP.';
+            } elseif ((int) $_FILES['logo']['size'] > 2 * 1024 * 1024) {
+                $error = 'Логотип больше 2 МБ.';
+            } else {
+                $brandingDir = dirname(__DIR__) . '/storage/branding';
+                if (!is_dir($brandingDir) && !@mkdir($brandingDir, 0775, true) && !is_dir($brandingDir)) {
+                    $error = 'Не удалось создать папку для логотипа.';
+                } else {
+                    $ext = $mime === 'image/png' ? 'png' : ($mime === 'image/webp' ? 'webp' : 'jpg');
+                    $dest = $brandingDir . '/logo.' . $ext;
+                    foreach (glob($brandingDir . '/logo.*') ?: [] as $old) {
+                        @unlink($old);
+                    }
+                    if (!move_uploaded_file((string) $_FILES['logo']['tmp_name'], $dest)) {
+                        $error = 'Не удалось сохранить логотип на диск.';
+                    } else {
+                        set_setting('company_logo_path', 'storage/branding/logo.' . $ext);
+                    }
+                }
             }
-            $ext = $mime === 'image/png' ? 'png' : ($mime === 'image/webp' ? 'webp' : 'jpg');
-            $dest = $brandingDir . '/logo.' . $ext;
-            foreach (glob($brandingDir . '/logo.*') ?: [] as $old) {
-                @unlink($old);
-            }
-            move_uploaded_file((string) $_FILES['logo']['tmp_name'], $dest);
-            set_setting('company_logo_path', 'storage/branding/logo.' . $ext);
         }
     }
 

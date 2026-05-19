@@ -16,13 +16,19 @@ if (!$installation || !can_access_installation($user, $installation)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
-    $installDate = (string) post('install_date', (string) ($installation['install_date'] ?? ''));
-    if ($installDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $installDate)) {
+    $installDate = trim((string) post('install_date', ''));
+    if ($installDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $installDate)) {
         $installDate = (string) ($installation['install_date'] ?? '');
     }
-    $warrantyMonths = (int) post('warranty_months', '12');
+
+    $address = trim((string) post('address', ''));
+    if ($address === '') {
+        $address = (string) ($installation['address'] ?? '');
+    }
+
+    $warrantyMonths = max(1, (int) post('warranty_months', '12'));
     $warrantyUntil = null;
-    if ($installDate !== '' && $warrantyMonths > 0) {
+    if ($installDate !== '') {
         try {
             $warrantyUntil = (new DateTimeImmutable($installDate))->modify('+' . $warrantyMonths . ' months')->format('Y-m-d');
         } catch (Throwable $e) {
@@ -30,9 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
         }
     }
 
-    $upd = db()->prepare('UPDATE installations SET install_date=:install_date, customer_name=:customer_name, customer_phone=:customer_phone, installer_name=:installer_name, installer_phone=:installer_phone, company_name=:company_name, company_inn=:company_inn, warranty_months=:warranty_months, warranty_until=:warranty_until, work_description=:work_description, comment=:comment, status=:status, updated_at=:updated_at WHERE id=:id');
+    $allowedStatuses = ['draft', 'in_progress', 'photos_partial', 'ready', 'pdf_generated', 'closed'];
+    $status = (string) post('status', 'draft');
+    if (!in_array($status, $allowedStatuses, true)) {
+        $status = (string) ($installation['status'] ?? 'draft');
+    }
+
+    $upd = db()->prepare('UPDATE installations SET install_date=:install_date, address=:address, customer_name=:customer_name, customer_phone=:customer_phone, installer_name=:installer_name, installer_phone=:installer_phone, company_name=:company_name, company_inn=:company_inn, warranty_months=:warranty_months, warranty_until=:warranty_until, work_description=:work_description, comment=:comment, status=:status, updated_at=:updated_at WHERE id=:id');
     $upd->execute([
         'install_date' => $installDate,
+        'address' => $address,
         'customer_name' => (string) post('customer_name', ''),
         'customer_phone' => (string) post('customer_phone', ''),
         'installer_name' => (string) post('installer_name', ''),
@@ -43,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
         'warranty_until' => $warrantyUntil,
         'work_description' => (string) post('work_description', ''),
         'comment' => (string) post('comment', ''),
-        'status' => (string) post('status', 'draft'),
+        'status' => $status,
         'updated_at' => now(),
         'id' => $id,
     ]);
@@ -166,6 +179,10 @@ HTML;
 
     <form method="post" class="card card-body mb-3 shadow-sm">
         <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
+
+        <h2 class="h6 text-muted mb-3">Объект</h2>
+        <label class="form-label">Адрес</label>
+        <textarea class="form-control mb-3" rows="2" name="address" required><?= h((string) ($installation['address'] ?? '')) ?></textarea>
 
         <h2 class="h6 text-muted mb-3">Заказчик</h2>
         <label class="form-label">Имя</label>

@@ -46,9 +46,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'toggle') {
             $targetId = (int) post('target_id', '0');
+            $targetStmt = db()->prepare('SELECT role, is_active FROM users WHERE id = :id');
+            $targetStmt->execute(['id' => $targetId]);
+            $target = $targetStmt->fetch();
+
             if ($targetId === (int) $user['id']) {
                 $error = 'Нельзя деактивировать самого себя.';
-            } else {
+            } elseif (!$target) {
+                $error = 'Пользователь не найден.';
+            } elseif ($target['role'] === 'admin' && (int) $target['is_active'] === 1) {
+                $activeAdmins = (int) db()->query("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1")->fetchColumn();
+                if ($activeAdmins <= 1) {
+                    $error = 'Нельзя деактивировать последнего активного администратора.';
+                }
+            }
+            if ($error === null) {
                 db()->prepare('UPDATE users SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END, updated_at=:updated_at WHERE id=:id')->execute([
                     'updated_at' => now(),
                     'id' => $targetId,

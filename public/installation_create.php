@@ -21,14 +21,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $number = null;
             $pdo = db();
-            $insertStmt = $pdo->prepare('INSERT INTO installations (number, work_type_id, user_id, install_date, address, status, verification_code, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :install_date, :address, :status, :verification_code, :created_at, :updated_at)');
+            $insertStmt = $pdo->prepare('INSERT INTO installations (number, work_type_id, user_id, install_date, address, status, warranty_months, warranty_until, verification_code, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :install_date, :address, :status, :warranty_months, :warranty_until, :verification_code, :created_at, :updated_at)');
+
+            $installDate = date('Y-m-d');
+            $warrantyMonths = 24;
+            $warrantyUntil = (new DateTimeImmutable($installDate))->modify('+' . $warrantyMonths . ' months')->format('Y-m-d');
 
             $params = [
                 'work_type_id' => $workTypeId,
                 'user_id' => $user['id'],
-                'install_date' => date('Y-m-d'),
+                'install_date' => $installDate,
                 'address' => $address,
                 'status' => 'draft',
+                'warranty_months' => $warrantyMonths,
+                'warranty_until' => $warrantyUntil,
                 'verification_code' => bin2hex(random_bytes(6)),
                 'created_at' => now(),
                 'updated_at' => now(),

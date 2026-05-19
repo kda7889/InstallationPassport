@@ -56,6 +56,11 @@ if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     exit('Upload error');
 }
 
+if (!is_uploaded_file((string) ($file['tmp_name'] ?? ''))) {
+    http_response_code(400);
+    exit('Invalid upload');
+}
+
 $config = require __DIR__ . '/../app/config.php';
 if ((int) $file['size'] > (int) $config['max_upload_bytes']) {
     http_response_code(400);
@@ -66,6 +71,12 @@ $finfo = new finfo(FILEINFO_MIME_TYPE);
 $mime = (string) $finfo->file((string) $file['tmp_name']);
 $ext = strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
 $tmpHeicConverted = null;
+
+register_shutdown_function(static function () use (&$tmpHeicConverted) {
+    if ($tmpHeicConverted !== null && is_file($tmpHeicConverted)) {
+        @unlink($tmpHeicConverted);
+    }
+});
 
 if ($mime === 'image/heic' || $mime === 'image/heif' || in_array($ext, ['heic', 'heif'], true)) {
     if (!extension_loaded('imagick')) {
@@ -148,10 +159,6 @@ $stmt->execute([
     'uploaded_at' => now(),
 ]);
 $photoId = (int) db()->lastInsertId();
-
-if ($tmpHeicConverted !== null && is_file($tmpHeicConverted)) {
-    @unlink($tmpHeicConverted);
-}
 
 audit_log('photo.uploaded', 'photo', $photoId, [
     'installation_id' => $installationId,
