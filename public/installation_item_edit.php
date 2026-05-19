@@ -93,7 +93,7 @@ $photos = $photosStmt->fetchAll();
 <input type="hidden" name="scope" value="item">
 <div class="mb-2"><label class="form-label">Код фото</label><input name="photo_code" class="form-control" value="general"></div>
 <div class="mb-2"><label class="form-label">Название</label><input name="title" class="form-control" value="Фото элемента"></div>
-<div class="mb-3"><input type="file" name="photo" accept="image/*" capture="environment" class="form-control" required></div>
+<div class="mb-3"><input type="file" name="photo" accept="image/*" class="form-control" required></div>
 <button class="btn btn-success">Загрузить фото</button>
 </form>
 <div class="row mt-3">

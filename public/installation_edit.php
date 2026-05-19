@@ -89,7 +89,7 @@ foreach ($items as $item) {
 <input type="hidden" name="scope" value="common">
 <div class="mb-2"><label class="form-label">Код фото</label><input name="photo_code" class="form-control" value="before_work"></div>
 <div class="mb-2"><label class="form-label">Название</label><input name="title" class="form-control" value="Общее фото"></div>
-<div class="mb-3"><input type="file" name="photo" accept="image/*" capture="environment" class="form-control" required></div>
+<div class="mb-3"><input type="file" name="photo" accept="image/*" class="form-control" required></div>
 <button class="btn btn-success">Загрузить общее фото</button>
 </form>
 <div class="row mb-3"><?php foreach ($commonPhotos as $photo): ?><div class="col-6 mb-3"><div class="card"><img src="/download_photo.php?id=<?= (int)$photo['id'] ?>" class="card-img-top" alt="thumb"><div class="card-body p-2"><div class="small"><?= h((string)$photo['title']) ?></div><form method="post" action="/photo_delete.php" class="mt-2"><input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>"><input type="hidden" name="id" value="<?= (int) $photo['id'] ?>"><button class="btn btn-sm btn-outline-danger" type="submit">Удалить</button></form></div></div></div><?php endforeach; ?></div>

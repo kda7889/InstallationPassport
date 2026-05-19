@@ -110,6 +110,34 @@ php scripts/preflight.php
    rm ~/web/doc.krdalp.ru/private/installationpassport/storage/initial-admin-credentials.txt
    ```
 
+## 8a) Если HestiaCP хранит файлы в `/srv/shared/<user>/`, а не в `/home/<user>/`
+
+В некоторых сборках HestiaCP (с shared-хостингом) реальные файлы лежат в `/srv/shared/<user>/web/...`, а `/home/<user>` — это симлинк на эту папку. PHP-FPM перед проверкой `open_basedir` делает `realpath()` и сверяет реальный путь (`/srv/shared/...`) с whitelist'ом, в котором прописан только `/home/<user>/...`. В итоге `require_once` падает с:
+
+```
+PHP Warning: require_once(): open_basedir restriction in effect.
+File(/srv/shared/<user>/web/<domain>/private/installationpassport/app/bootstrap.php)
+is not within the allowed path(s)
+```
+
+Лечится дописыванием реального пути в `open_basedir` пула FPM:
+
+```bash
+# подставьте свой пользователь и домен
+USER=kda7889
+DOMAIN=doc.krdalp.ru
+
+sudo cp /etc/php/8.3/fpm/pool.d/$DOMAIN.conf /etc/php/8.3/fpm/pool.d/$DOMAIN.conf.bak
+
+sudo sed -i "s|^\(php_admin_value\[open_basedir\] = .*\)$|\1:/srv/shared/$USER/web/$DOMAIN:/srv/shared/$USER/tmp|" \
+  /etc/php/8.3/fpm/pool.d/$DOMAIN.conf
+
+sudo grep open_basedir /etc/php/8.3/fpm/pool.d/$DOMAIN.conf
+sudo systemctl reload php8.3-fpm
+```
+
+> **Внимание:** этот файл генерируется HestiaCP из шаблона (заголовок «DO NOT MODIFY... WILL BE LOST WHEN REBUILDING DOMAINS»). При следующем `v-rebuild-web-domains` правка пропадёт. Для постоянного решения сделайте свой шаблон в `/usr/local/hestia/data/templates/web/php-fpm/` (скопируйте `PHP-8_3.tpl` под новым именем, допишите `:/srv/shared/%user%/web/%domain%:/srv/shared/%user%/tmp` к строке `open_basedir`, выберите его в **Web → Edit → Backend Template**).
+
 ## 9) Дополнительная защита (опционально, для nginx-only режима)
 
 Если в HestiaCP включён шаблон **nginx-only** (без Apache backend), то `.htaccess` игнорируется. В этом случае добавить кастомные правила через **Web → Edit → Advanced Options → Nginx Settings**:
