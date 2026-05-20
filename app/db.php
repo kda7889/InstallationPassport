@@ -175,6 +175,7 @@ function db_migrate_reviews(): void
         FOREIGN KEY(installation_id) REFERENCES installations(id) ON DELETE CASCADE
     )');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_installation ON reviews(installation_id, created_at DESC)');
+    $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_reviews_installation_period ON reviews(installation_id, period_label) WHERE period_label != 'custom'");
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS review_ratings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -89,7 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('/customer.php?n=' . urlencode($number) . '&c=' . urlencode($code));
         } catch (Throwable $e) {
             $pdo->rollBack();
-            throw $e;
+            if ($e instanceof PDOException && str_contains(strtolower($e->getMessage()), 'unique')) {
+                $error = 'Отзыв за этот период уже оставлен. Выберите другой период или вариант «Дополнительно».';
+            } else {
+                throw $e;
+            }
         }
     }
 }
@@ -128,21 +132,24 @@ $branding = company_branding((int) $installation['company_id']);
         <input type="hidden" name="n" value="<?= h($number) ?>">
         <input type="hidden" name="c" value="<?= h($code) ?>">
 
+        <?php $prevPeriod = (string) post('period_label', 'initial'); ?>
         <label class="form-label">Когда монтаж? Дайте контексту:</label>
         <select name="period_label" class="form-select mb-3" required>
             <?php foreach ($periodLabels as $k => $label): ?>
-                <option value="<?= h($k) ?>"><?= h($label) ?></option>
+                <option value="<?= h($k) ?>"<?= $prevPeriod === $k ? ' selected' : '' ?>><?= h($label) ?></option>
             <?php endforeach; ?>
         </select>
 
         <h2 class="h6 text-muted mb-2">Оцените по критериям</h2>
         <p class="small text-muted mb-2">Если не выставить ни одной звезды — общая оценка будет 5/5.</p>
-        <?php foreach ($criteria as $key => $label): ?>
+        <?php foreach ($criteria as $key => $label):
+            $prevStars = (int) post('rating_' . $key, '0');
+        ?>
             <div class="mb-3">
                 <div class="small mb-1"><?= h($label) ?></div>
                 <div class="star-row">
                     <?php for ($i = 5; $i >= 1; $i--): ?>
-                        <input type="radio" name="rating_<?= h($key) ?>" id="rating_<?= h($key) ?>_<?= $i ?>" value="<?= $i ?>">
+                        <input type="radio" name="rating_<?= h($key) ?>" id="rating_<?= h($key) ?>_<?= $i ?>" value="<?= $i ?>"<?= $prevStars === $i ? ' checked' : '' ?>>
                         <label for="rating_<?= h($key) ?>_<?= $i ?>">★</label>
                     <?php endfor; ?>
                 </div>
@@ -150,13 +157,13 @@ $branding = company_branding((int) $installation['company_id']);
         <?php endforeach; ?>
 
         <label class="form-label">Что понравилось</label>
-        <textarea class="form-control mb-2" rows="3" name="text" placeholder="Например: приехали вовремя, оборудование работает тихо."></textarea>
+        <textarea class="form-control mb-2" rows="3" name="text" placeholder="Например: приехали вовремя, оборудование работает тихо."><?= h((string) post('text', '')) ?></textarea>
 
         <label class="form-label">Что улучшить или критика</label>
-        <textarea class="form-control mb-2" rows="2" name="suggestions" placeholder="Конструктивные предложения помогут компании стать лучше."></textarea>
+        <textarea class="form-control mb-2" rows="2" name="suggestions" placeholder="Конструктивные предложения помогут компании стать лучше."><?= h((string) post('suggestions', '')) ?></textarea>
 
         <label class="form-label">Как вас подписать (необязательно)</label>
-        <input class="form-control mb-3" name="name" placeholder="например, Иван П.">
+        <input class="form-control mb-3" name="name" placeholder="например, Иван П." value="<?= h((string) post('name', '')) ?>">
 
         <p class="small text-muted">Имя и текст будут видны всем, кто откроет публичную проверку талона. Никакие ваши контактные данные не публикуются.</p>
 

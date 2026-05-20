@@ -9,6 +9,10 @@ if (current_user()) {
 }
 
 $error = null;
+$notice = null;
+if (($_GET['suspended'] ?? '') === '1') {
+    $notice = 'Доступ к этой компании приостановлен. Свяжитесь с поддержкой.';
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ip = client_ip();
     $email = (string) post('email', '');
@@ -42,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="row justify-content-center">
         <div class="col-12 col-md-6 col-lg-4">
             <h1 class="h3 mb-3">МонтажПаспорт</h1>
+            <?php if ($notice): ?><div class="alert alert-warning"><?= h($notice) ?></div><?php endif; ?>
             <?php if ($error): ?><div class="alert alert-danger"><?= h($error) ?></div><?php endif; ?>
             <form method="post" class="card card-body shadow-sm">
                 <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
