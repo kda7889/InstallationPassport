@@ -169,6 +169,12 @@ location ~* /storage/.*\.(php|phtml|phar)$ {
 
 (каталог `~/backup/` создать заранее, права 700).
 
+Очистка `audit_log` старше года (опционально — лениво вызывается из самого приложения с вероятностью 0.1%, но cron гарантирует регулярность):
+
+```bash
+0 4 * * 0 php /home/<user>/web/doc.krdalp.ru/private/installationpassport/scripts/cleanup.php 365
+```
+
 ## 11) Обновление кода
 
 ```bash

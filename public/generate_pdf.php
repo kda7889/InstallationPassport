@@ -24,11 +24,15 @@ $commonStmt = db()->prepare("SELECT * FROM installation_photos WHERE installatio
 $commonStmt->execute(['id' => $id]);
 $commonPhotos = $commonStmt->fetchAll();
 
-$itemPhotosMap = [];
-foreach ($items as $item) {
-    $ps = db()->prepare("SELECT * FROM installation_photos WHERE installation_item_id=:item_id ORDER BY uploaded_at");
-    $ps->execute(['item_id' => $item['id']]);
-    $itemPhotosMap[(int) $item['id']] = $ps->fetchAll();
+$itemPhotosMap = array_fill_keys(array_map('intval', array_column($items, 'id')), []);
+if ($items) {
+    $itemIds = array_map('intval', array_column($items, 'id'));
+    $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+    $ps = db()->prepare("SELECT * FROM installation_photos WHERE installation_item_id IN ($placeholders) ORDER BY uploaded_at");
+    $ps->execute($itemIds);
+    foreach ($ps->fetchAll() as $row) {
+        $itemPhotosMap[(int) $row['installation_item_id']][] = $row;
+    }
 }
 
 $missingImportant = [];
@@ -44,7 +48,12 @@ foreach ($items as $item) {
     }
 }
 
-$html = render_installation_pdf_html($installation, $items, $commonPhotos, $itemPhotosMap);
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+$host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+$verifyBaseUrl = $host !== '' ? $scheme . '://' . $host : null;
+
+$html = render_installation_pdf_html($installation, $items, $commonPhotos, $itemPhotosMap, $verifyBaseUrl);
 $paths = ensure_installation_dirs((string) $installation['number']);
 $pdfFile = $paths['base'] . '/documents/warranty_' . $installation['number'] . '_' . date('Ymd_His') . '.pdf';
 
@@ -53,7 +62,19 @@ if (!class_exists('Mpdf\\Mpdf')) {
     exit('mPDF не установлен. Выполните composer require mpdf/mpdf');
 }
 
-$mpdf = new Mpdf\Mpdf(['tempDir' => dirname(__DIR__) . '/storage/tmp']);
+$tmpDir = dirname(__DIR__) . '/storage/tmp';
+if (!is_dir($tmpDir) && !@mkdir($tmpDir, 0775, true) && !is_dir($tmpDir)) {
+    http_response_code(500);
+    exit('Не удалось создать ' . h($tmpDir));
+}
+
+$documentsDir = dirname($pdfFile);
+if (!is_dir($documentsDir) && !@mkdir($documentsDir, 0775, true) && !is_dir($documentsDir)) {
+    http_response_code(500);
+    exit('Не удалось создать ' . h($documentsDir));
+}
+
+$mpdf = new Mpdf\Mpdf(['tempDir' => $tmpDir]);
 $mpdf->WriteHTML($html);
 $mpdf->Output($pdfFile, \Mpdf\Output\Destination::FILE);
 
@@ -74,5 +95,6 @@ db()->prepare('INSERT INTO generated_documents (installation_id, document_type, 
     'created_at' => now(),
 ]);
 
-$_SESSION['pdf_warning'] = $missingImportant;
+audit_log('pdf.generated', 'installation', $id, ['number' => $installation['number'], 'missing' => $missingImportant]);
+
 redirect('/download_pdf.php?id=' . $id);

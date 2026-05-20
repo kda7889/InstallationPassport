@@ -20,7 +20,14 @@ $installationId = (int) post('installation_id', '0');
 $itemId = (int) post('installation_item_id', '0');
 $scope = post('scope', 'item') === 'common' ? 'common' : 'item';
 $photoCode = (string) post('photo_code', 'other');
-$title = (string) post('title', 'Фото');
+$title = trim((string) post('title', ''));
+if ($title === '') {
+    $title = 'Фото';
+}
+$photoStage = (string) post('photo_stage', 'other');
+if (!in_array($photoStage, ['before', 'during', 'after', 'other'], true)) {
+    $photoStage = 'other';
+}
 
 $iStmt = db()->prepare('SELECT * FROM installations WHERE id = :id');
 $iStmt->execute(['id' => $installationId]);
@@ -53,6 +60,11 @@ if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     exit('Upload error');
 }
 
+if (!is_uploaded_file((string) ($file['tmp_name'] ?? ''))) {
+    http_response_code(400);
+    exit('Invalid upload');
+}
+
 $config = require __DIR__ . '/../app/config.php';
 if ((int) $file['size'] > (int) $config['max_upload_bytes']) {
     http_response_code(400);
@@ -61,10 +73,40 @@ if ((int) $file['size'] > (int) $config['max_upload_bytes']) {
 
 $finfo = new finfo(FILEINFO_MIME_TYPE);
 $mime = (string) $finfo->file((string) $file['tmp_name']);
+$ext = strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+$tmpHeicConverted = null;
+
+register_shutdown_function(static function () use (&$tmpHeicConverted) {
+    if ($tmpHeicConverted !== null && is_file($tmpHeicConverted)) {
+        @unlink($tmpHeicConverted);
+    }
+});
+
+if ($mime === 'image/heic' || $mime === 'image/heif' || in_array($ext, ['heic', 'heif'], true)) {
+    if (!extension_loaded('imagick')) {
+        http_response_code(400);
+        exit('Формат HEIC не поддерживается на этом сервере. Загрузите JPG или включите на iPhone «Настройки → Камера → Форматы → Наиболее совместимые».');
+    }
+    try {
+        $im = new Imagick((string) $file['tmp_name']);
+        $im->setImageFormat('jpeg');
+        $im->setImageCompressionQuality(95);
+        $tmpHeicConverted = (string) $file['tmp_name'] . '.jpg';
+        $im->writeImage($tmpHeicConverted);
+        $im->clear();
+        $im->destroy();
+    } catch (Throwable $e) {
+        http_response_code(400);
+        exit('Не удалось прочитать HEIC.');
+    }
+    $file['tmp_name'] = $tmpHeicConverted;
+    $mime = 'image/jpeg';
+}
+
 $allowed = ['image/jpeg', 'image/png', 'image/webp'];
 if (!in_array($mime, $allowed, true)) {
     http_response_code(400);
-    exit('Формат HEIC пока не поддерживается. Отправьте фото в JPG или измените настройки камеры iPhone на "Наиболее совместимые".');
+    exit('Неподдерживаемый формат изображения.');
 }
 
 $source = image_load_by_mime((string) $file['tmp_name'], $mime);
@@ -101,24 +143,49 @@ if ($scope === 'common') {
 
 $fullPath = "$compressedDir/$fileName";
 $thumbPath = "$thumbDir/$fileName";
-imagejpeg($full, $fullPath, (int) $config['jpeg_quality']);
-imagejpeg($thumb, $thumbPath, (int) $config['jpeg_quality']);
+$quality = (int) $config['jpeg_quality'];
+if (!@imagejpeg($full, $fullPath, $quality) || !@imagejpeg($thumb, $thumbPath, $quality)) {
+    @unlink($fullPath);
+    @unlink($thumbPath);
+    imagedestroy($source);
+    imagedestroy($full);
+    imagedestroy($thumb);
+    http_response_code(500);
+    exit('Не удалось сохранить файл на диск. Проверьте права на storage/.');
+}
 
-$stmt = db()->prepare('INSERT INTO installation_photos (installation_id, installation_item_id, scope, photo_code, title, file_path, thumb_path, mime_type, file_size, width, height, uploaded_by, uploaded_at) VALUES (:installation_id,:installation_item_id,:scope,:photo_code,:title,:file_path,:thumb_path,:mime_type,:file_size,:width,:height,:uploaded_by,:uploaded_at)');
+$width = imagesx($full);
+$height = imagesy($full);
+$fileSize = (int) @filesize($fullPath);
+
+imagedestroy($source);
+imagedestroy($full);
+imagedestroy($thumb);
+
+$stmt = db()->prepare('INSERT INTO installation_photos (installation_id, installation_item_id, scope, photo_code, photo_stage, title, file_path, thumb_path, mime_type, file_size, width, height, uploaded_by, uploaded_at) VALUES (:installation_id,:installation_item_id,:scope,:photo_code,:photo_stage,:title,:file_path,:thumb_path,:mime_type,:file_size,:width,:height,:uploaded_by,:uploaded_at)');
 $stmt->execute([
     'installation_id' => $installationId,
     'installation_item_id' => $scope === 'item' ? $itemId : null,
     'scope' => $scope,
     'photo_code' => $photoCode,
+    'photo_stage' => $photoStage,
     'title' => $title,
     'file_path' => str_replace(dirname(__DIR__) . '/', '', $fullPath),
     'thumb_path' => str_replace(dirname(__DIR__) . '/', '', $thumbPath),
     'mime_type' => 'image/jpeg',
-    'file_size' => filesize($fullPath),
-    'width' => imagesx($full),
-    'height' => imagesy($full),
+    'file_size' => $fileSize,
+    'width' => $width,
+    'height' => $height,
     'uploaded_by' => $user['id'],
     'uploaded_at' => now(),
+]);
+$photoId = (int) db()->lastInsertId();
+
+audit_log('photo.uploaded', 'photo', $photoId, [
+    'installation_id' => $installationId,
+    'installation_item_id' => $scope === 'item' ? $itemId : null,
+    'scope' => $scope,
+    'photo_code' => $photoCode,
 ]);
 
 if ($scope === 'common') {

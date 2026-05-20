@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS installations (
   comment TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','in_progress','photos_partial','ready','pdf_generated','closed')),
   pdf_path TEXT,
+  verification_code TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(work_type_id) REFERENCES work_types(id),
@@ -112,6 +113,33 @@ CREATE TABLE IF NOT EXISTS generated_documents (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(installation_id) REFERENCES installations(id) ON DELETE CASCADE,
   FOREIGN KEY(created_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT NOT NULL,
+  email TEXT,
+  success INTEGER NOT NULL DEFAULT 0,
+  attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts(ip, attempted_at);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  action TEXT NOT NULL,
+  entity_type TEXT,
+  entity_id INTEGER,
+  metadata TEXT,
+  ip TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );
 
 INSERT INTO work_types (code, name, description, sort_order) VALUES

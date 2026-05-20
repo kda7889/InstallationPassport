@@ -13,8 +13,10 @@ if (!$photo || (($user['role'] ?? '') !== 'admin' && (int) $photo['user_id'] !==
     http_response_code(403);
     exit('Forbidden');
 }
-$path = dirname(__DIR__) . '/' . $photo['thumb_path'];
-if (!is_file($path)) {
+$wantFull = ($_GET['size'] ?? '') === 'full';
+$relPath = $wantFull ? ($photo['file_path'] ?? '') : ($photo['thumb_path'] ?? '');
+$path = dirname(__DIR__) . '/' . $relPath;
+if (!$relPath || !is_file($path)) {
     http_response_code(404);
     exit('Not found');
 }
