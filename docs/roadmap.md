@@ -1,25 +1,45 @@
 # Roadmap
 
-## Phase 0 — Stabilization (1-2 итерации)
-- Убрать HTML fallback для PDF.
-- Перевести destructive actions на POST+CSRF.
-- Довести валидацию входных данных и ошибки UX.
+## Сделано
 
-## Phase 1 — MVP completion
-- Пользователи и роли (полный admin CRUD).
-- Полные формы монтажа + элементов по типам работ.
-- Полный checklist фото для кондиционеров.
-- Предупреждение о недостающих важных фото.
-- История PDF версий + страница просмотра.
+### Phase 0 — Stabilization
+- ✅ Убран HTML fallback для PDF (теперь явная ошибка).
+- ✅ Destructive actions переведены на POST+CSRF.
+- ✅ Валидация входных данных и UX ошибок.
 
-## Phase 2 — Production hardening
-- Логирование событий безопасности.
-- Rate limiting на login/upload.
-- Резервные копии SQLite + storage.
-- Набор smoke/integration тестов.
+### Phase 1 — MVP completion
+- ✅ Пользователи и роли (полный CRUD).
+- ✅ Полные формы монтажа + элементов.
+- ✅ photo_templates по типам работ.
+- ✅ История PDF в `generated_documents` + страница просмотра.
+- ⏳ Предупреждение о недостающих важных фото — частично реализовано (`generate_pdf.php`), на UI пока нет блока.
 
-## Phase 3 — Extensions
-- Публичная ссылка на PDF.
-- QR в талоне.
-- PWA/offline draft.
-- HEIC pipeline (опционально).
+### Phase 2 — Production hardening
+- ✅ Логирование событий безопасности (`audit_log`).
+- ✅ Rate limit на login (10/5min) и на customer-отзывы (5/час).
+- ✅ HEIC upload pipeline.
+- ✅ Бэкап-cron и TTL для `audit_log`.
+
+### Phase 3 — Multi-tenant SaaS
+- ✅ Сущность `companies` + миграция дефолтной компании.
+- ✅ Superadmin / admin / installer с per-tenant изоляцией.
+- ✅ Бренд компании (ИНН, контакты, логотип).
+- ✅ Customer-портал с двумя кодами доступа.
+- ✅ Public verification + маскировка ПДн (152-ФЗ).
+- ✅ Отзывы клиентов + модерация.
+- ✅ Лендинг с топами и поиском гарантийника.
+- ✅ Приостановка компании с реальной блокировкой доступа.
+
+## Дальше
+
+### Должно быть в ближайших итерациях
+- Self-service регистрация компаний (сейчас только через superadmin).
+- Email-уведомления: приглашение оставить follow-up отзыв через месяц / год.
+- Замена / редактирование фото на месте без удаления.
+
+### Возможные расширения
+- PWA + offline draft.
+- Push-уведомления через WebPush.
+- Биллинг (тарифы по числу пользователей / монтажей).
+- Минимальный API для интеграции с CRM монтажных компаний.
+- Полноценные feature-тесты (PHPUnit / Pest), CI pipeline.
