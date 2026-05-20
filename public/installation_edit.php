@@ -72,46 +72,21 @@ $commonPhotosStmt = db()->prepare("SELECT * FROM installation_photos WHERE insta
 $commonPhotosStmt->execute(['id' => $id]);
 $commonPhotos = $commonPhotosStmt->fetchAll();
 
-$commonByCode = [];
+$commonByStage = ['before' => [], 'during' => [], 'after' => [], 'other' => []];
 foreach ($commonPhotos as $p) {
-    $commonByCode[$p['photo_code']][] = $p;
-}
-
-$commonTplStmt = db()->prepare("SELECT * FROM photo_templates WHERE work_type_id = :wt AND scope = 'common' AND is_active = 1 ORDER BY sort_order, id");
-$commonTplStmt->execute(['wt' => $installation['work_type_id']]);
-$commonTemplates = $commonTplStmt->fetchAll();
-$commonTemplateCodes = array_column($commonTemplates, 'code');
-
-$otherCommonPhotos = [];
-foreach ($commonPhotos as $p) {
-    if (!in_array($p['photo_code'], $commonTemplateCodes, true)) {
-        $otherCommonPhotos[] = $p;
+    $stage = (string) ($p['photo_stage'] ?? 'other');
+    if (!isset($commonByStage[$stage])) {
+        $stage = 'other';
     }
+    $commonByStage[$stage][] = $p;
 }
 
-$warningStmt = db()->prepare("SELECT code, title FROM photo_templates WHERE work_type_id = :wt AND scope = 'item' AND is_important = 1 AND is_active = 1 ORDER BY sort_order");
-$warningStmt->execute(['wt' => $installation['work_type_id']]);
-$importantTemplates = $warningStmt->fetchAll();
-
-$codesByItem = [];
-if ($items && $importantTemplates) {
-    $itemIds = array_map('intval', array_column($items, 'id'));
-    $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
-    $codesStmt = db()->prepare("SELECT installation_item_id, photo_code FROM installation_photos WHERE installation_item_id IN ($placeholders)");
-    $codesStmt->execute($itemIds);
-    foreach ($codesStmt->fetchAll() as $row) {
-        $codesByItem[(int) $row['installation_item_id']][] = $row['photo_code'];
-    }
-}
-$missingImportant = [];
-foreach ($items as $it) {
-    $codes = $codesByItem[(int) $it['id']] ?? [];
-    foreach ($importantTemplates as $tpl) {
-        if (!in_array($tpl['code'], $codes, true)) {
-            $missingImportant[] = $it['title'] . ': ' . $tpl['title'];
-        }
-    }
-}
+$stageLabels = [
+    'before' => 'До работ',
+    'during' => 'В процессе',
+    'after' => 'После работ',
+    'other' => 'Прочее',
+];
 
 $statusLabels = [
     'draft' => 'Черновик',
@@ -166,16 +141,6 @@ HTML;
         <?php endif; ?>
     </div>
 
-    <?php if ($missingImportant): ?>
-        <div class="alert alert-warning">
-            <div class="fw-semibold mb-1">Рекомендованные фото ещё не загружены:</div>
-            <ul class="mb-0">
-                <?php foreach ($missingImportant as $m): ?>
-                    <li><?= h($m) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
 
     <form method="post" class="card card-body mb-3 shadow-sm">
         <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
@@ -231,78 +196,58 @@ HTML;
         <button class="btn btn-primary" type="submit">Сохранить</button>
     </form>
 
-    <h2 class="h5 mb-2">Общие фото объекта</h2>
-
-    <?php foreach ($commonTemplates as $tpl): ?>
-        <?php $tplPhotos = $commonByCode[$tpl['code']] ?? []; ?>
-        <div class="card mb-3 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-start mb-2">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">
-                            <?= h((string) $tpl['title']) ?>
-                            <?php if ((int) $tpl['is_important'] === 1): ?>
-                                <span class="badge bg-warning text-dark ms-1">рекомендуется</span>
-                            <?php endif; ?>
-                        </div>
-                        <?php if (!empty($tpl['description'])): ?>
-                            <div class="small text-muted"><?= h((string) $tpl['description']) ?></div>
-                        <?php endif; ?>
-                    </div>
-                    <span class="badge <?= $tplPhotos ? 'bg-success' : 'bg-secondary' ?>"><?= count($tplPhotos) ?></span>
-                </div>
-
-                <?php if ($tplPhotos): ?>
-                    <div class="row g-2 mb-2">
-                        <?php foreach ($tplPhotos as $p) {
-                            echo $renderPhotoCard($p);
-                        } ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post" action="/photo_upload.php" enctype="multipart/form-data" class="d-flex gap-2">
-                    <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
-                    <input type="hidden" name="installation_id" value="<?= (int) $installation['id'] ?>">
-                    <input type="hidden" name="scope" value="common">
-                    <input type="hidden" name="photo_code" value="<?= h((string) $tpl['code']) ?>">
-                    <input type="hidden" name="title" value="<?= h((string) $tpl['title']) ?>">
-                    <input type="file" name="photo" accept="image/*" class="form-control" required>
-                    <button class="btn btn-success" type="submit">Добавить</button>
-                </form>
-            </div>
-        </div>
-    <?php endforeach; ?>
-
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
-            <div class="fw-semibold mb-2">
-                <?= $commonTemplates ? 'Прочие общие фото' : 'Общие фото объекта' ?>
-            </div>
-
-            <?php if ($otherCommonPhotos): ?>
-                <div class="row g-2 mb-2">
-                    <?php foreach ($otherCommonPhotos as $p) {
-                        echo $renderPhotoCard($p);
-                    } ?>
-                </div>
-            <?php endif; ?>
-
+            <h2 class="h5 mb-2">Общие фото объекта</h2>
             <form method="post" action="/photo_upload.php" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
                 <input type="hidden" name="installation_id" value="<?= (int) $installation['id'] ?>">
                 <input type="hidden" name="scope" value="common">
-                <input type="hidden" name="photo_code" value="other">
+                <input type="hidden" name="photo_code" value="common_photo">
 
-                <div class="mb-2">
-                    <input name="title" class="form-control" placeholder="Подпись (необязательно)">
-                </div>
-                <div class="d-flex gap-2">
-                    <input type="file" name="photo" accept="image/*" class="form-control" required>
-                    <button class="btn btn-success" type="submit">Загрузить</button>
+                <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Стадия</label>
+                        <select name="photo_stage" class="form-select">
+                            <option value="before">До работ</option>
+                            <option value="during">В процессе</option>
+                            <option value="after" selected>После работ</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Подпись</label>
+                        <input name="title" class="form-control" placeholder="например, общий вид">
+                    </div>
+                    <div class="col-12">
+                        <input type="file" name="photo" accept="image/*" class="form-control" required>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-success w-100">Добавить фото</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
+
+    <?php foreach ($stageLabels as $stage => $label): ?>
+        <?php $stagePhotos = $commonByStage[$stage] ?? []; ?>
+        <?php if ($stagePhotos): ?>
+            <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="fw-semibold flex-grow-1">Общие · <?= h($label) ?></div>
+                        <span class="badge bg-success"><?= count($stagePhotos) ?></span>
+                    </div>
+                    <div class="row g-2">
+                        <?php foreach ($stagePhotos as $p) {
+                            echo $renderPhotoCard($p);
+                        } ?>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    <?php endforeach; ?>
 
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h5 mb-0">Элементы монтажа</h2>

@@ -14,16 +14,23 @@ if ($number === '' || $code === '' || $photoId <= 0) {
     exit('Bad request');
 }
 
-$stmt = db()->prepare('SELECT p.file_path, p.thumb_path FROM installation_photos p JOIN installations i ON i.id = p.installation_id WHERE p.id = :photo_id AND i.number = :number AND i.verification_code = :code LIMIT 1');
-$stmt->execute(['photo_id' => $photoId, 'number' => $number, 'code' => $code]);
-$photo = $stmt->fetch();
+$stmt = db()->prepare('SELECT p.file_path, p.thumb_path, i.verification_code, i.access_token FROM installation_photos p JOIN installations i ON i.id = p.installation_id WHERE p.id = :photo_id AND i.number = :number LIMIT 1');
+$stmt->execute(['photo_id' => $photoId, 'number' => $number]);
+$row = $stmt->fetch();
 
-if (!$photo) {
+if (!$row) {
     http_response_code(404);
     exit('Not found');
 }
 
-$path = dirname(__DIR__) . '/' . ($wantFull ? $photo['file_path'] : $photo['thumb_path']);
+$valid = (is_string($row['verification_code']) && hash_equals((string) $row['verification_code'], $code))
+    || (is_string($row['access_token']) && hash_equals((string) $row['access_token'], $code));
+if (!$valid) {
+    http_response_code(404);
+    exit('Not found');
+}
+
+$path = dirname(__DIR__) . '/' . ($wantFull ? $row['file_path'] : $row['thumb_path']);
 if (!is_file($path)) {
     http_response_code(404);
     exit('Not found');

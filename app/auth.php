@@ -44,6 +44,8 @@ function attempt_login(string $email, string $password): bool
         'name' => (string) $user['name'],
         'email' => (string) $user['email'],
         'role' => (string) $user['role'],
+        'company_id' => (int) ($user['company_id'] ?? 0),
+        'is_superadmin' => (int) ($user['is_superadmin'] ?? 0),
     ];
 
     return true;

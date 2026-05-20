@@ -5,7 +5,7 @@ declare(strict_types=1);
 function render_installation_pdf_html(array $installation, array $items, array $commonPhotos, array $itemPhotosMap, ?string $verifyBaseUrl = null): string
 {
     $root = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
-    $branding = company_branding();
+    $branding = company_branding((int) ($installation['company_id'] ?? 0));
 
     $photoHtml = static function (array $photo) use ($root): string {
         $rel = (string) ($photo['thumb_path'] ?? $photo['file_path'] ?? '');
@@ -113,10 +113,14 @@ function render_installation_pdf_html(array $installation, array $items, array $
 
     <?php
     $number = (string) $installation['number'];
-    $code = (string) ($installation['verification_code'] ?? '');
+    $verifyCode = (string) ($installation['verification_code'] ?? '');
+    $accessToken = (string) ($installation['access_token'] ?? '');
     $generatedAt = date('d.m.Y H:i');
-    $customerUrl = $verifyBaseUrl
-        ? rtrim($verifyBaseUrl, '/') . '/customer.php?n=' . urlencode($number) . '&c=' . urlencode($code)
+    $publicUrl = $verifyBaseUrl
+        ? rtrim($verifyBaseUrl, '/') . '/customer.php?n=' . urlencode($number) . '&c=' . urlencode($verifyCode)
+        : null;
+    $personalUrl = $verifyBaseUrl && $accessToken !== ''
+        ? rtrim($verifyBaseUrl, '/') . '/customer.php?n=' . urlencode($number) . '&c=' . urlencode($accessToken)
         : null;
     ?>
 
@@ -124,18 +128,25 @@ function render_installation_pdf_html(array $installation, array $items, array $
     <table style="margin-top:20px; font-size:9pt; color:#444; border:1px solid #999; padding:0; width:100%;">
         <tr>
             <td style="padding:8px; vertical-align:top;">
-                <div><strong>Подлинность документа</strong></div>
+                <div><strong>Подлинность и онлайн-кабинет</strong></div>
                 <div>Номер: <strong><?= h($number) ?></strong></div>
-                <div>Код проверки: <strong><?= h($code) ?></strong></div>
-                <div>Сформирован: <?= h($generatedAt) ?></div>
-                <?php if ($customerUrl): ?>
-                    <div style="margin-top:4px;">Онлайн-копия с фото: <?= h($customerUrl) ?></div>
+                <div>Публичный код проверки: <strong><?= h($verifyCode) ?></strong></div>
+                <?php if ($accessToken !== ''): ?>
+                    <div>Личный код доступа: <strong><?= h($accessToken) ?></strong></div>
+                    <div style="font-size:8pt; color:#777;">с ним вы видите весь отчёт и оставляете отзывы. Никому не передавайте.</div>
+                <?php endif; ?>
+                <div style="margin-top:4px;">Сформирован: <?= h($generatedAt) ?></div>
+                <?php if ($publicUrl): ?>
+                    <div style="margin-top:4px;">Онлайн (публично): <?= h($publicUrl) ?></div>
+                <?php endif; ?>
+                <?php if ($personalUrl): ?>
+                    <div>Личный кабинет: <?= h($personalUrl) ?></div>
                 <?php endif; ?>
                 <div style="margin-top:4px; color:#777;">Если кода нет в нашей базе — гарантийный талон поддельный.</div>
             </td>
-            <?php if ($customerUrl): ?>
+            <?php if ($personalUrl ?: $publicUrl): ?>
             <td style="width:120px; padding:8px; vertical-align:middle; text-align:center;">
-                <barcode code="<?= h($customerUrl) ?>" type="QR" size="0.9" error="M" />
+                <barcode code="<?= h($personalUrl ?: $publicUrl) ?>" type="QR" size="0.9" error="M" />
                 <div style="font-size:7pt; color:#777; margin-top:2px;">сканируйте телефоном</div>
             </td>
             <?php endif; ?>

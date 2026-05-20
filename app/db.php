@@ -70,9 +70,120 @@ function db_migrate_schema(): void
         value TEXT
     )');
 
+    db_migrate_multitenant();
+    db_migrate_photo_stage();
+    db_migrate_reviews();
     db_seed_photo_templates();
 
     $done = true;
+}
+
+function _table_has_column(string $table, string $name): bool
+{
+    foreach (db()->query("PRAGMA table_info({$table})")->fetchAll() as $col) {
+        if (($col['name'] ?? '') === $name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function db_migrate_multitenant(): void
+{
+    $pdo = db();
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS companies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        slug TEXT UNIQUE,
+        inn TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        logo_path TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    if (!_table_has_column('users', 'company_id')) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN company_id INTEGER');
+    }
+    if (!_table_has_column('users', 'is_superadmin')) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN is_superadmin INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!_table_has_column('installations', 'company_id')) {
+        $pdo->exec('ALTER TABLE installations ADD COLUMN company_id INTEGER');
+    }
+    if (!_table_has_column('installations', 'access_token')) {
+        $pdo->exec('ALTER TABLE installations ADD COLUMN access_token TEXT');
+        $pdo->exec("UPDATE installations SET access_token = lower(hex(randomblob(8))) WHERE access_token IS NULL OR access_token = ''");
+    }
+
+    $existing = (int) $pdo->query('SELECT COUNT(*) FROM companies')->fetchColumn();
+    if ($existing === 0) {
+        $get = static function (string $key): ?string {
+            $stmt = db()->prepare('SELECT value FROM app_settings WHERE key = :k');
+            $stmt->execute(['k' => $key]);
+            $v = $stmt->fetchColumn();
+            return $v !== false ? (string) $v : null;
+        };
+        $name = $get('company_name');
+        if ($name === null || $name === '') {
+            $name = 'Моя компания';
+        }
+        $pdo->prepare('INSERT INTO companies (id, name, slug, inn, phone, email, address, logo_path, is_active) VALUES (1, :name, :slug, :inn, :phone, :email, :address, :logo, 1)')
+            ->execute([
+                'name' => $name,
+                'slug' => 'default',
+                'inn' => $get('company_inn'),
+                'phone' => $get('company_phone'),
+                'email' => $get('company_email'),
+                'address' => $get('company_address'),
+                'logo' => $get('company_logo_path'),
+            ]);
+    }
+
+    $pdo->exec('UPDATE users SET company_id = (SELECT MIN(id) FROM companies) WHERE company_id IS NULL');
+    $pdo->exec('UPDATE installations SET company_id = (SELECT MIN(id) FROM companies) WHERE company_id IS NULL');
+
+    $hasSuperadmin = (int) $pdo->query('SELECT COUNT(*) FROM users WHERE is_superadmin = 1')->fetchColumn();
+    if ($hasSuperadmin === 0) {
+        $pdo->exec("UPDATE users SET is_superadmin = 1 WHERE id = (SELECT id FROM users WHERE role = 'admin' AND is_active = 1 ORDER BY id ASC LIMIT 1)");
+    }
+}
+
+function db_migrate_photo_stage(): void
+{
+    if (!_table_has_column('installation_photos', 'photo_stage')) {
+        db()->exec("ALTER TABLE installation_photos ADD COLUMN photo_stage TEXT DEFAULT 'other'");
+    }
+}
+
+function db_migrate_reviews(): void
+{
+    $pdo = db();
+    $pdo->exec('CREATE TABLE IF NOT EXISTS reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        installation_id INTEGER NOT NULL,
+        period_label TEXT NOT NULL DEFAULT "initial",
+        overall_rating INTEGER,
+        text TEXT,
+        suggestions TEXT,
+        customer_name_provided TEXT,
+        is_hidden INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(installation_id) REFERENCES installations(id) ON DELETE CASCADE
+    )');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_installation ON reviews(installation_id, created_at DESC)');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS review_ratings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        review_id INTEGER NOT NULL,
+        criterion TEXT NOT NULL,
+        stars INTEGER NOT NULL,
+        FOREIGN KEY(review_id) REFERENCES reviews(id) ON DELETE CASCADE,
+        UNIQUE(review_id, criterion)
+    )');
 }
 
 function db_seed_photo_templates(): void

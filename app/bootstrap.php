@@ -16,6 +16,7 @@ require_once __DIR__ . '/storage.php';
 require_once __DIR__ . '/image.php';
 require_once __DIR__ . '/audit.php';
 require_once __DIR__ . '/settings.php';
+require_once __DIR__ . '/privacy.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')

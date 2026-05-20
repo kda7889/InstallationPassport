@@ -6,15 +6,25 @@ require_once __DIR__ . '/../app/bootstrap.php';
 require_auth();
 $user = current_user();
 
-$isAdmin = ($user['role'] ?? '') === 'admin';
-$sql = 'SELECT i.*, w.name as work_type_name, u.name AS owner_name, u.email AS owner_email FROM installations i JOIN work_types w ON w.id = i.work_type_id LEFT JOIN users u ON u.id = i.user_id';
+$isSuperadmin = !empty($user['is_superadmin']);
+$isAdmin = ($user['role'] ?? '') === 'admin' || $isSuperadmin;
+
+$sql = 'SELECT i.*, w.name as work_type_name, u.name AS owner_name, u.email AS owner_email, c.name AS company_name FROM installations i JOIN work_types w ON w.id = i.work_type_id LEFT JOIN users u ON u.id = i.user_id LEFT JOIN companies c ON c.id = i.company_id';
 $params = [];
 $statusFilter = trim((string) ($_GET['status'] ?? ''));
 $typeFilter = (int) ($_GET['work_type_id'] ?? 0);
 $userFilter = $isAdmin ? (int) ($_GET['user_id'] ?? 0) : 0;
+$companyFilter = $isSuperadmin ? (int) ($_GET['company_id'] ?? 0) : (int) ($user['company_id'] ?? 0);
 $query = trim((string) ($_GET['q'] ?? ''));
 $where = [];
 
+if (!$isSuperadmin) {
+    $where[] = 'i.company_id = :scope_company';
+    $params['scope_company'] = (int) ($user['company_id'] ?? 0);
+} elseif ($companyFilter > 0) {
+    $where[] = 'i.company_id = :scope_company';
+    $params['scope_company'] = $companyFilter;
+}
 if (!$isAdmin) {
     $where[] = 'i.user_id = :user_id';
     $params['user_id'] = $user['id'];
@@ -43,7 +53,19 @@ $stmt = db()->prepare($sql);
 $stmt->execute($params);
 $installations = $stmt->fetchAll();
 $types = db()->query('SELECT id, name FROM work_types WHERE is_active=1 ORDER BY sort_order')->fetchAll();
-$users = $isAdmin ? db()->query('SELECT id, name, email FROM users ORDER BY name')->fetchAll() : [];
+
+if ($isSuperadmin) {
+    $users = db()->query('SELECT id, name, email FROM users ORDER BY name')->fetchAll();
+    $companies = db()->query('SELECT id, name FROM companies WHERE is_active = 1 ORDER BY name')->fetchAll();
+} elseif ($isAdmin) {
+    $stmt = db()->prepare('SELECT id, name, email FROM users WHERE company_id = :cid ORDER BY name');
+    $stmt->execute(['cid' => (int) ($user['company_id'] ?? 0)]);
+    $users = $stmt->fetchAll();
+    $companies = [];
+} else {
+    $users = [];
+    $companies = [];
+}
 
 $statusLabels = [
     'draft' => 'Черновик',
@@ -78,8 +100,12 @@ $statusLabels = [
     <?php if ($isAdmin): ?>
         <div class="d-flex gap-2 mb-3 flex-wrap">
             <a class="btn btn-outline-dark flex-grow-1" href="/users.php">Пользователи</a>
-            <a class="btn btn-outline-dark flex-grow-1" href="/settings.php">Настройки</a>
+            <a class="btn btn-outline-dark flex-grow-1" href="/company_edit.php">Моя компания</a>
+            <a class="btn btn-outline-dark flex-grow-1" href="/reviews.php">Отзывы</a>
             <a class="btn btn-outline-dark flex-grow-1" href="/audit.php">Журнал</a>
+            <?php if ($isSuperadmin): ?>
+                <a class="btn btn-outline-warning flex-grow-1" href="/companies.php">Компании</a>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -104,12 +130,22 @@ $statusLabels = [
                     <?php endforeach; ?>
                 </select>
             </div>
-            <?php if ($isAdmin): ?>
+            <?php if ($isAdmin && $users): ?>
                 <div class="col-12">
                     <select name="user_id" class="form-select">
                         <option value="0">Все исполнители</option>
                         <?php foreach ($users as $u): ?>
                             <option value="<?= (int) $u['id'] ?>" <?= $userFilter === (int) $u['id'] ? 'selected' : '' ?>><?= h((string) ($u['name'] ?: $u['email'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
+            <?php if ($isSuperadmin && $companies): ?>
+                <div class="col-12">
+                    <select name="company_id" class="form-select">
+                        <option value="0">Все компании</option>
+                        <?php foreach ($companies as $c): ?>
+                            <option value="<?= (int) $c['id'] ?>" <?= $companyFilter === (int) $c['id'] ? 'selected' : '' ?>><?= h((string) $c['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -128,6 +164,9 @@ $statusLabels = [
                     <div class="small text-muted"><?= h((string) $i['address']) ?></div>
                     <div class="small">
                         <span class="badge bg-light text-dark border"><?= h((string) ($statusLabels[$i['status']] ?? $i['status'])) ?></span>
+                        <?php if ($isSuperadmin && !empty($i['company_name'])): ?>
+                            <span class="badge bg-warning text-dark ms-1"><?= h((string) $i['company_name']) ?></span>
+                        <?php endif; ?>
                         <?php if ($isAdmin && !empty($i['owner_email'])): ?>
                             <span class="text-muted ms-2">— <?= h((string) ($i['owner_name'] ?: $i['owner_email'])) ?></span>
                         <?php endif; ?>

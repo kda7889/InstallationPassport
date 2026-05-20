@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $number = null;
             $pdo = db();
-            $insertStmt = $pdo->prepare('INSERT INTO installations (number, work_type_id, user_id, install_date, address, status, warranty_months, warranty_until, verification_code, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :install_date, :address, :status, :warranty_months, :warranty_until, :verification_code, :created_at, :updated_at)');
+            $insertStmt = $pdo->prepare('INSERT INTO installations (number, work_type_id, user_id, company_id, install_date, address, status, warranty_months, warranty_until, verification_code, access_token, created_at, updated_at) VALUES (:number, :work_type_id, :user_id, :company_id, :install_date, :address, :status, :warranty_months, :warranty_until, :verification_code, :access_token, :created_at, :updated_at)');
 
             $installDate = date('Y-m-d');
             $warrantyMonths = 24;
@@ -30,12 +30,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $params = [
                 'work_type_id' => $workTypeId,
                 'user_id' => $user['id'],
+                'company_id' => (int) ($user['company_id'] ?? 0),
                 'install_date' => $installDate,
                 'address' => $address,
                 'status' => 'draft',
                 'warranty_months' => $warrantyMonths,
                 'warranty_until' => $warrantyUntil,
                 'verification_code' => bin2hex(random_bytes(6)),
+                'access_token' => bin2hex(random_bytes(8)),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

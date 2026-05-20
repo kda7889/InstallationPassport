@@ -4,7 +4,16 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/bootstrap.php';
 
-$logoPath = setting('company_logo_path');
+$companyId = (int) ($_GET['company'] ?? 0);
+$logoPath = '';
+
+if ($companyId > 0) {
+    $row = company($companyId);
+    if ($row && !empty($row['logo_path'])) {
+        $logoPath = (string) $row['logo_path'];
+    }
+}
+
 if ($logoPath === '') {
     http_response_code(404);
     exit;

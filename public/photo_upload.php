@@ -24,6 +24,10 @@ $title = trim((string) post('title', ''));
 if ($title === '') {
     $title = 'Фото';
 }
+$photoStage = (string) post('photo_stage', 'other');
+if (!in_array($photoStage, ['before', 'during', 'after', 'other'], true)) {
+    $photoStage = 'other';
+}
 
 $iStmt = db()->prepare('SELECT * FROM installations WHERE id = :id');
 $iStmt->execute(['id' => $installationId]);
@@ -158,12 +162,13 @@ imagedestroy($source);
 imagedestroy($full);
 imagedestroy($thumb);
 
-$stmt = db()->prepare('INSERT INTO installation_photos (installation_id, installation_item_id, scope, photo_code, title, file_path, thumb_path, mime_type, file_size, width, height, uploaded_by, uploaded_at) VALUES (:installation_id,:installation_item_id,:scope,:photo_code,:title,:file_path,:thumb_path,:mime_type,:file_size,:width,:height,:uploaded_by,:uploaded_at)');
+$stmt = db()->prepare('INSERT INTO installation_photos (installation_id, installation_item_id, scope, photo_code, photo_stage, title, file_path, thumb_path, mime_type, file_size, width, height, uploaded_by, uploaded_at) VALUES (:installation_id,:installation_item_id,:scope,:photo_code,:photo_stage,:title,:file_path,:thumb_path,:mime_type,:file_size,:width,:height,:uploaded_by,:uploaded_at)');
 $stmt->execute([
     'installation_id' => $installationId,
     'installation_item_id' => $scope === 'item' ? $itemId : null,
     'scope' => $scope,
     'photo_code' => $photoCode,
+    'photo_stage' => $photoStage,
     'title' => $title,
     'file_path' => str_replace(dirname(__DIR__) . '/', '', $fullPath),
     'thumb_path' => str_replace(dirname(__DIR__) . '/', '', $thumbPath),

@@ -80,28 +80,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
 
 $extraData = $item ? json_decode((string) ($item['extra_data_json'] ?? '{}'), true) : [];
 
-$photos = [];
-$photosByCode = [];
+$photosByStage = ['before' => [], 'during' => [], 'after' => [], 'other' => []];
 if ($item) {
     $photosStmt = db()->prepare('SELECT * FROM installation_photos WHERE installation_item_id = :item_id ORDER BY uploaded_at DESC');
     $photosStmt->execute(['item_id' => $itemId]);
-    $photos = $photosStmt->fetchAll();
-    foreach ($photos as $p) {
-        $photosByCode[$p['photo_code']][] = $p;
+    foreach ($photosStmt->fetchAll() as $p) {
+        $stage = (string) ($p['photo_stage'] ?? 'other');
+        if (!isset($photosByStage[$stage])) {
+            $stage = 'other';
+        }
+        $photosByStage[$stage][] = $p;
     }
 }
 
-$tplStmt = db()->prepare("SELECT * FROM photo_templates WHERE work_type_id = :wt AND scope = 'item' AND is_active = 1 ORDER BY sort_order, id");
-$tplStmt->execute(['wt' => $installation['work_type_id']]);
-$templates = $tplStmt->fetchAll();
-$templateCodes = array_column($templates, 'code');
-
-$otherPhotos = [];
-foreach ($photos as $p) {
-    if (!in_array($p['photo_code'], $templateCodes, true)) {
-        $otherPhotos[] = $p;
-    }
-}
+$stageLabels = [
+    'before' => 'До работ',
+    'during' => 'В процессе',
+    'after' => 'После работ',
+    'other' => 'Прочее',
+];
 
 $renderPhotoCard = static function (array $photo): string {
     $id = (int) $photo['id'];
@@ -169,81 +166,95 @@ HTML;
 
 <?php if ($item): ?>
 
-<?php if ($templates): ?>
-    <h2 class="h5 mt-4 mb-2">Фотоотчёт по элементу</h2>
-    <p class="text-muted small">Снимки с пометкой «рекомендуется» обычно ждут гарантийщики. Можно загружать в любом порядке.</p>
-
-    <?php foreach ($templates as $tpl): ?>
-        <?php $tplPhotos = $photosByCode[$tpl['code']] ?? []; ?>
-        <div class="card mb-3 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-start mb-2">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">
-                            <?= h((string) $tpl['title']) ?>
-                            <?php if ((int) $tpl['is_important'] === 1): ?>
-                                <span class="badge bg-warning text-dark ms-1">рекомендуется</span>
-                            <?php endif; ?>
-                        </div>
-                        <?php if (!empty($tpl['description'])): ?>
-                            <div class="small text-muted"><?= h((string) $tpl['description']) ?></div>
-                        <?php endif; ?>
-                    </div>
-                    <span class="badge <?= $tplPhotos ? 'bg-success' : 'bg-secondary' ?>"><?= count($tplPhotos) ?></span>
-                </div>
-
-                <?php if ($tplPhotos): ?>
-                    <div class="row g-2 mb-2">
-                        <?php foreach ($tplPhotos as $p) {
-                            echo $renderPhotoCard($p);
-                        } ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post" action="/photo_upload.php" enctype="multipart/form-data" class="d-flex gap-2">
-                    <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
-                    <input type="hidden" name="installation_id" value="<?= (int) $installationId ?>">
-                    <input type="hidden" name="installation_item_id" value="<?= (int) $itemId ?>">
-                    <input type="hidden" name="scope" value="item">
-                    <input type="hidden" name="photo_code" value="<?= h((string) $tpl['code']) ?>">
-                    <input type="hidden" name="title" value="<?= h((string) $tpl['title']) ?>">
-                    <input type="file" name="photo" accept="image/*" class="form-control" required>
-                    <button class="btn btn-success" type="submit">Добавить</button>
-                </form>
-            </div>
-        </div>
-    <?php endforeach; ?>
-<?php endif; ?>
-
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
-            <div class="fw-semibold mb-2">Дополнительные фото</div>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Загрузить фото</h2>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#tips">Что снять?</button>
+            </div>
 
-            <?php if ($otherPhotos): ?>
-                <div class="row g-2 mb-2">
-                    <?php foreach ($otherPhotos as $p) {
-                        echo $renderPhotoCard($p);
-                    } ?>
+            <div id="tips" class="collapse mt-2">
+                <div class="alert alert-info small mb-2">
+                    <div class="fw-semibold mb-1">📷 Что обычно стоит сфотографировать:</div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>До работ</strong>
+                            <ul class="mb-0">
+                                <li>Состояние помещения</li>
+                                <li>Существующая проводка / трубы</li>
+                                <li>Место будущего монтажа</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>В процессе</strong>
+                            <ul class="mb-0">
+                                <li>Распакованное оборудование + шильдик</li>
+                                <li>Сложные узлы монтажа</li>
+                                <li>Опрессовка / вакуумирование</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>После работ</strong>
+                            <ul class="mb-0">
+                                <li>Готовое оборудование общим планом</li>
+                                <li>Шильдик / серийный номер крупно</li>
+                                <li>Демонстрация работы</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-            <?php endif; ?>
+            </div>
 
-            <form method="post" action="/photo_upload.php" enctype="multipart/form-data">
+            <form method="post" action="/photo_upload.php" enctype="multipart/form-data" class="mt-2">
                 <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
                 <input type="hidden" name="installation_id" value="<?= (int) $installationId ?>">
                 <input type="hidden" name="installation_item_id" value="<?= (int) $itemId ?>">
                 <input type="hidden" name="scope" value="item">
-                <input type="hidden" name="photo_code" value="other">
+                <input type="hidden" name="photo_code" value="item_photo">
 
-                <div class="mb-2">
-                    <input name="title" class="form-control" placeholder="Подпись (необязательно)">
-                </div>
-                <div class="d-flex gap-2">
-                    <input type="file" name="photo" accept="image/*" class="form-control" required>
-                    <button class="btn btn-success" type="submit">Загрузить</button>
+                <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Стадия</label>
+                        <select name="photo_stage" class="form-select">
+                            <option value="before">До работ</option>
+                            <option value="during">В процессе</option>
+                            <option value="after" selected>После работ</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Подпись</label>
+                        <input name="title" class="form-control" placeholder="например, шильдик">
+                    </div>
+                    <div class="col-12">
+                        <input type="file" name="photo" accept="image/*" class="form-control" required>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-success w-100" type="submit">Добавить фото</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
+
+    <?php foreach ($stageLabels as $stage => $label): ?>
+        <?php $stagePhotos = $photosByStage[$stage] ?? []; ?>
+        <?php if ($stagePhotos): ?>
+            <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="fw-semibold flex-grow-1"><?= h($label) ?></div>
+                        <span class="badge bg-success"><?= count($stagePhotos) ?></span>
+                    </div>
+                    <div class="row g-2">
+                        <?php foreach ($stagePhotos as $p) {
+                            echo $renderPhotoCard($p);
+                        } ?>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    <?php endforeach; ?>
 
     <form method="post" action="/installation_item_delete.php" class="mt-4" onsubmit="return confirm('Удалить элемент со всеми его фото?')">
         <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
