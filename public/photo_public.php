@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/bootstrap.php';
 
-$number = trim((string) ($_GET['n'] ?? ''));
-$code = trim((string) ($_GET['c'] ?? ''));
+$number = mb_strtoupper(trim((string) ($_GET['n'] ?? '')));
+$code = strtolower(trim((string) ($_GET['c'] ?? '')));
 $photoId = (int) ($_GET['p'] ?? 0);
 $wantFull = ($_GET['full'] ?? '') === '1';
 

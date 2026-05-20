@@ -63,9 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (!$isSuperadmin && (int) $target['company_id'] !== $companyId) {
                 $error = 'Этот пользователь не из вашей компании.';
             } elseif ($target['role'] === 'admin' && (int) $target['is_active'] === 1) {
-                $cnt = (int) db()->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1 AND company_id = :cid")->execute(['cid' => $target['company_id']]);
-                $cnt = (int) db()->query("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1 AND company_id = " . (int) $target['company_id'])->fetchColumn();
-                if ($cnt <= 1) {
+                $countStmt = db()->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1 AND company_id = :cid");
+                $countStmt->execute(['cid' => (int) $target['company_id']]);
+                if ((int) $countStmt->fetchColumn() <= 1) {
                     $error = 'Нельзя деактивировать последнего активного администратора компании.';
                 }
             }

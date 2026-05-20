@@ -144,10 +144,10 @@ function render_installation_pdf_html(array $installation, array $items, array $
                 <?php endif; ?>
                 <div style="margin-top:4px; color:#777;">Если кода нет в нашей базе — гарантийный талон поддельный.</div>
             </td>
-            <?php if ($personalUrl ?: $publicUrl): ?>
+            <?php if ($publicUrl): ?>
             <td style="width:120px; padding:8px; vertical-align:middle; text-align:center;">
-                <barcode code="<?= h($personalUrl ?: $publicUrl) ?>" type="QR" size="0.9" error="M" />
-                <div style="font-size:7pt; color:#777; margin-top:2px;">сканируйте телефоном</div>
+                <barcode code="<?= h($publicUrl) ?>" type="QR" size="0.9" error="M" />
+                <div style="font-size:7pt; color:#777; margin-top:2px;">QR — публичная проверка</div>
             </td>
             <?php endif; ?>
         </tr>

@@ -49,6 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
                     foreach (glob($brandingDir . '/company-' . $companyId . '.*') ?: [] as $old) {
                         @unlink($old);
                     }
+                    $legacyLogo = (string) ($company['logo_path'] ?? '');
+                    if ($legacyLogo !== '' && strpos($legacyLogo, 'company-' . $companyId . '.') === false) {
+                        @unlink(dirname(__DIR__) . '/' . ltrim($legacyLogo, '/'));
+                    }
                     if (!move_uploaded_file((string) $_FILES['logo']['tmp_name'], $dest)) {
                         $error = 'Не удалось сохранить логотип.';
                     } else {

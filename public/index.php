@@ -29,7 +29,7 @@ $topInstallers = db()->query(
      FROM users u
      JOIN installations i ON i.user_id = u.id
      JOIN reviews r ON r.installation_id = i.id AND r.is_hidden = 0 AND r.overall_rating IS NOT NULL
-     LEFT JOIN companies c ON c.id = u.company_id
+     JOIN companies c ON c.id = u.company_id AND c.is_active = 1
      WHERE u.is_active = 1 AND u.role = 'installer'
      GROUP BY u.id
      HAVING reviews_count >= 1

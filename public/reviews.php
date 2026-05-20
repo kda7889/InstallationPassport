@@ -72,7 +72,7 @@ $periodLabels = [
                             <span class="star <?= $i <= (int) $r['overall_rating'] ? '' : 'empty' ?>">★</span>
                         <?php endfor; ?>
                     </strong>
-                    <span class="small text-muted ms-1"><?= h(mask_name((string) ($r['customer_name_provided'] ?? $r['customer_name'] ?? ''))) ?></span>
+                    <span class="small text-muted ms-1"><?= h((string) ($r['customer_name_provided'] ?? $r['customer_name'] ?? '')) ?></span>
                 </div>
                 <div class="small text-muted">
                     <?= h($periodLabels[$r['period_label']] ?? $r['period_label']) ?> ·

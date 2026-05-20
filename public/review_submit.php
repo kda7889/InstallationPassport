@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/bootstrap.php';
 
-$number = trim((string) ($_GET['n'] ?? $_POST['n'] ?? ''));
-$code = trim((string) ($_GET['c'] ?? $_POST['c'] ?? ''));
+$number = mb_strtoupper(trim((string) ($_GET['n'] ?? $_POST['n'] ?? '')));
+$code = strtolower(trim((string) ($_GET['c'] ?? $_POST['c'] ?? '')));
 
 if ($number === '' || $code === '') {
     http_response_code(400);

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/bootstrap.php';
 
-$number = trim((string) ($_GET['n'] ?? ''));
-$code = trim((string) ($_GET['c'] ?? ''));
+$number = mb_strtoupper(trim((string) ($_GET['n'] ?? '')));
+$code = strtolower(trim((string) ($_GET['c'] ?? '')));
 
 $installation = null;
 $accessLevel = 'none'; // none / public / personal
@@ -260,7 +260,16 @@ $warrantyUntil = (string) ($installation['warranty_until'] ?? '');
                                 <span class="star <?= $i <= $overall ? '' : 'empty' ?>">★</span>
                             <?php endfor; ?>
                         </strong>
-                        <span class="text-muted small ms-1"><?= h(mask_name((string) ($r['customer_name_provided'] ?? $customerName))) ?></span>
+                        <?php
+                            $reviewName = (string) ($r['customer_name_provided'] ?? '');
+                            if ($reviewName === '') {
+                                $reviewName = (string) ($installation['customer_name'] ?? '');
+                            }
+                            if ($accessLevel === 'public') {
+                                $reviewName = mask_name($reviewName);
+                            }
+                        ?>
+                        <span class="text-muted small ms-1"><?= h($reviewName) ?></span>
                     </div>
                     <div class="small text-muted">
                         <?= h($periodLabels[$r['period_label']] ?? (string) $r['period_label']) ?> · <?= h(date('d.m.Y', strtotime((string) $r['created_at']))) ?>
