@@ -4,7 +4,17 @@ declare(strict_types=1);
 
 function client_ip(): string
 {
-    return (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+    if (($remote === '127.0.0.1' || $remote === '::1') && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $forwarded = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $candidate = trim((string) $forwarded[0]);
+        if (filter_var($candidate, FILTER_VALIDATE_IP) !== false) {
+            return $candidate;
+        }
+    }
+
+    return $remote;
 }
 
 function audit_log(string $action, ?string $entityType = null, ?int $entityId = null, ?array $metadata = null): void

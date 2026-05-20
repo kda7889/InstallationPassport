@@ -11,6 +11,18 @@ function require_auth(): void
     if (empty($_SESSION['user'])) {
         redirect('/login.php');
     }
+
+    $user = $_SESSION['user'];
+    if (empty($user['is_superadmin']) && (int) ($user['company_id'] ?? 0) > 0) {
+        $stmt = db()->prepare('SELECT is_active FROM companies WHERE id = :id');
+        $stmt->execute(['id' => (int) $user['company_id']]);
+        $active = $stmt->fetchColumn();
+        if ($active === false || (int) $active !== 1) {
+            $_SESSION = [];
+            session_destroy();
+            redirect('/login.php?suspended=1');
+        }
+    }
 }
 
 function current_user(): ?array
@@ -25,11 +37,15 @@ function current_user(): ?array
 
 function attempt_login(string $email, string $password): bool
 {
-    $stmt = db()->prepare('SELECT * FROM users WHERE email = :email AND is_active = 1 LIMIT 1');
+    $stmt = db()->prepare('SELECT u.*, COALESCE(c.is_active, 1) AS company_active FROM users u LEFT JOIN companies c ON c.id = u.company_id WHERE u.email = :email AND u.is_active = 1 LIMIT 1');
     $stmt->execute(['email' => mb_strtolower(trim($email))]);
     $user = $stmt->fetch();
 
     if (!$user || !password_verify($password, (string) $user['password_hash'])) {
+        return false;
+    }
+
+    if (empty($user['is_superadmin']) && (int) ($user['company_active'] ?? 1) !== 1) {
         return false;
     }
 
