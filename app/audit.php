@@ -20,6 +20,25 @@ function audit_log(string $action, ?string $entityType = null, ?int $entityId = 
         'ip' => client_ip(),
         'created_at' => now(),
     ]);
+
+    if (random_int(1, 1000) === 1) {
+        try {
+            audit_log_cleanup();
+        } catch (Throwable $_) {
+            // do not let cleanup failures break the parent request
+        }
+    }
+}
+
+function audit_log_cleanup(int $daysToKeep = 365): int
+{
+    if ($daysToKeep < 1) {
+        return 0;
+    }
+    $cutoff = (new DateTimeImmutable('-' . $daysToKeep . ' days'))->format('Y-m-d H:i:s');
+    $stmt = db()->prepare('DELETE FROM audit_log WHERE created_at < :cutoff');
+    $stmt->execute(['cutoff' => $cutoff]);
+    return $stmt->rowCount();
 }
 
 function login_rate_limit_block(string $ip): bool

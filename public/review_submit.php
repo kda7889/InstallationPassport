@@ -50,10 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (!$ratings && $text === '') {
-        $error = 'Оцените хотя бы один критерий или напишите отзыв.';
+    $dupStmt = db()->prepare('SELECT COUNT(*) FROM reviews WHERE installation_id = :iid AND period_label = :period');
+    $dupStmt->execute(['iid' => $installation['id'], 'period' => $period]);
+    $duplicate = $period !== 'custom' && (int) $dupStmt->fetchColumn() >= 1;
+
+    $ip = client_ip();
+    $ipCutoff = (new DateTimeImmutable('-1 hour'))->format('Y-m-d H:i:s');
+    $rateStmt = db()->prepare("SELECT COUNT(*) FROM audit_log WHERE action = 'review.submitted' AND ip = :ip AND created_at > :cutoff");
+    $rateStmt->execute(['ip' => $ip, 'cutoff' => $ipCutoff]);
+    $ipBlocked = (int) $rateStmt->fetchColumn() >= 5;
+
+    if ($duplicate) {
+        $error = 'Отзыв за этот период уже оставлен. Выберите другой период или вариант «Дополнительно».';
+    } elseif ($ipBlocked) {
+        $error = 'Слишком много отзывов с этого устройства. Попробуйте через час.';
     } else {
-        $overall = $ratings ? (int) round(array_sum($ratings) / count($ratings)) : null;
+        $overall = $ratings ? (int) round(array_sum($ratings) / count($ratings)) : 5;
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -124,6 +136,7 @@ $branding = company_branding((int) $installation['company_id']);
         </select>
 
         <h2 class="h6 text-muted mb-2">Оцените по критериям</h2>
+        <p class="small text-muted mb-2">Если не выставить ни одной звезды — общая оценка будет 5/5.</p>
         <?php foreach ($criteria as $key => $label): ?>
             <div class="mb-3">
                 <div class="small mb-1"><?= h($label) ?></div>
