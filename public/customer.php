@@ -9,8 +9,7 @@ $code = strtolower(trim((string) ($_GET['c'] ?? '')));
 
 $installation = null;
 $accessLevel = 'none'; // none / public / personal
-$items = [];
-$photosByGroup = ['common' => [], 'items' => []];
+$photos = [];
 
 if ($number !== '' && $code !== '') {
     $stmt = db()->prepare('SELECT i.*, w.name AS work_type_name FROM installations i JOIN work_types w ON w.id = i.work_type_id WHERE i.number = :number LIMIT 1');
@@ -31,23 +30,9 @@ if ($number !== '' && $code !== '') {
 }
 
 if ($installation !== null) {
-    $itemStmt = db()->prepare('SELECT * FROM installation_items WHERE installation_id = :id ORDER BY sort_order, id');
-    $itemStmt->execute(['id' => $installation['id']]);
-    $items = $itemStmt->fetchAll();
-
     $commonStmt = db()->prepare("SELECT * FROM installation_photos WHERE installation_id = :id AND scope = 'common' ORDER BY photo_stage, uploaded_at");
     $commonStmt->execute(['id' => $installation['id']]);
-    $photosByGroup['common'] = $commonStmt->fetchAll();
-
-    if ($items) {
-        $ids = array_map('intval', array_column($items, 'id'));
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $ps = db()->prepare("SELECT * FROM installation_photos WHERE installation_item_id IN ($placeholders) ORDER BY photo_stage, uploaded_at");
-        $ps->execute($ids);
-        foreach ($ps->fetchAll() as $p) {
-            $photosByGroup['items'][(int) $p['installation_item_id']][] = $p;
-        }
-    }
+    $photos = $commonStmt->fetchAll();
 }
 
 $branding = $installation ? company_branding((int) ($installation['company_id'] ?? 0)) : ['name' => '', 'logo_path' => '', 'phone' => '', 'email' => '', 'inn' => '', 'address' => ''];
@@ -186,26 +171,6 @@ $warrantyUntil = (string) ($installation['warranty_until'] ?? '');
         <?php endif; ?>
     </div>
 
-    <?php if ($items): ?>
-        <h2 class="h5 mb-2">Установленное оборудование</h2>
-        <div class="list-group mb-3 shadow-sm">
-            <?php foreach ($items as $idx => $item): ?>
-                <div class="list-group-item">
-                    <div class="fw-semibold"><?= $idx + 1 ?>. <?= h((string) $item['title']) ?></div>
-                    <?php if (!empty($item['location'])): ?>
-                        <div class="small text-muted">Место: <?= h((string) $item['location']) ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($item['brand']) || !empty($item['model'])): ?>
-                        <div class="small text-muted">
-                            <?php if (!empty($item['brand'])): ?>Марка: <?= h((string) $item['brand']) ?><?php endif; ?>
-                            <?php if (!empty($item['model'])): ?> · Модель: <?= h((string) $item['model']) ?><?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
     <?php
     $renderPhotos = static function (array $photos) use ($photoUrl, $stageLabels): void {
         $byStage = ['before' => [], 'during' => [], 'after' => [], 'other' => []];
@@ -230,18 +195,10 @@ $warrantyUntil = (string) ($installation['warranty_until'] ?? '');
     };
     ?>
 
-    <?php if ($photosByGroup['common']): ?>
+    <?php if ($photos): ?>
         <h2 class="h5 mt-4 mb-2">Фото объекта</h2>
-        <?php $renderPhotos($photosByGroup['common']); ?>
+        <?php $renderPhotos($photos); ?>
     <?php endif; ?>
-
-    <?php foreach ($items as $item): ?>
-        <?php $itemPhotos = $photosByGroup['items'][(int) $item['id']] ?? []; ?>
-        <?php if ($itemPhotos): ?>
-            <h2 class="h6 mt-3 mb-2">Фото: <?= h((string) $item['title']) ?></h2>
-            <?php $renderPhotos($itemPhotos); ?>
-        <?php endif; ?>
-    <?php endforeach; ?>
 
     <h2 class="h5 mt-4 mb-2">Отзывы</h2>
     <?php if (!$reviews): ?>

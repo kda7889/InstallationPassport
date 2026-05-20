@@ -64,13 +64,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_validate(post('_csrf'))) {
     redirect('/installation_edit.php?id=' . $id);
 }
 
-$itemStmt = db()->prepare('SELECT * FROM installation_items WHERE installation_id = :id ORDER BY sort_order, id');
-$itemStmt->execute(['id' => $id]);
-$items = $itemStmt->fetchAll();
-
 $commonPhotosStmt = db()->prepare("SELECT * FROM installation_photos WHERE installation_id = :id AND scope = 'common' ORDER BY uploaded_at DESC");
 $commonPhotosStmt->execute(['id' => $id]);
 $commonPhotos = $commonPhotosStmt->fetchAll();
+
+$tplStmt = db()->prepare('SELECT title, is_important FROM photo_templates WHERE work_type_id = :wt AND is_active = 1 ORDER BY is_important DESC, sort_order ASC, id ASC');
+$tplStmt->execute(['wt' => (int) $installation['work_type_id']]);
+$recommendedPhotos = $tplStmt->fetchAll();
 
 $commonByStage = ['before' => [], 'during' => [], 'after' => [], 'other' => []];
 foreach ($commonPhotos as $p) {
@@ -196,13 +196,44 @@ HTML;
         <button class="btn btn-primary" type="submit">Сохранить</button>
     </form>
 
+    <?php if ($recommendedPhotos): ?>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body p-2">
+            <a class="btn btn-link w-100 text-start text-decoration-none p-2 collapsed d-flex align-items-center"
+               data-bs-toggle="collapse" href="#recommendedPhotos" role="button" aria-expanded="false">
+                <span class="flex-grow-1">
+                    <strong>Что снять для этого типа работ</strong>
+                    <span class="text-muted small ms-1">(<?= count($recommendedPhotos) ?>)</span>
+                </span>
+                <span class="text-muted small">показать&nbsp;▾</span>
+            </a>
+            <div class="collapse mt-2" id="recommendedPhotos">
+                <ul class="list-unstyled small mb-0 ps-1">
+                    <?php foreach ($recommendedPhotos as $tpl): ?>
+                        <li class="py-1">
+                            <?php if ((int) $tpl['is_important'] === 1): ?>
+                                <span class="text-warning">★</span>
+                            <?php else: ?>
+                                <span class="text-muted">·</span>
+                            <?php endif; ?>
+                            <?= h((string) $tpl['title']) ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <div class="text-muted small mt-2">
+                    ★ — обязательные для гарантии. Список — подсказка, никто ничего не блокирует. Снимайте всё, что считаете нужным.
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
-            <h2 class="h5 mb-2">Общие фото объекта</h2>
+            <h2 class="h5 mb-2">Фото объекта</h2>
             <form method="post" action="/photo_upload.php" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
                 <input type="hidden" name="installation_id" value="<?= (int) $installation['id'] ?>">
-                <input type="hidden" name="scope" value="common">
                 <input type="hidden" name="photo_code" value="common_photo">
 
                 <div class="row g-2">
@@ -236,7 +267,7 @@ HTML;
             <div class="card mb-3 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-2">
-                        <div class="fw-semibold flex-grow-1">Общие · <?= h($label) ?></div>
+                        <div class="fw-semibold flex-grow-1"><?= h($label) ?></div>
                         <span class="badge bg-success"><?= count($stagePhotos) ?></span>
                     </div>
                     <div class="row g-2">
@@ -248,25 +279,6 @@ HTML;
             </div>
         <?php endif; ?>
     <?php endforeach; ?>
-
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h5 mb-0">Элементы монтажа</h2>
-        <a class="btn btn-sm btn-primary" href="/installation_item_edit.php?installation_id=<?= (int) $installation['id'] ?>">+ Добавить</a>
-    </div>
-
-    <div class="list-group mb-4">
-        <?php foreach ($items as $it): ?>
-            <a href="/installation_item_edit.php?id=<?= (int) $it['id'] ?>" class="list-group-item list-group-item-action">
-                <div class="fw-semibold"><?= h((string) $it['title']) ?></div>
-                <?php if (!empty($it['location'])): ?>
-                    <div class="small text-muted"><?= h((string) $it['location']) ?></div>
-                <?php endif; ?>
-            </a>
-        <?php endforeach; ?>
-        <?php if (!$items): ?>
-            <div class="list-group-item text-muted">Элементов пока нет.</div>
-        <?php endif; ?>
-    </div>
 
 </div>
 

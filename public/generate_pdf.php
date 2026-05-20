@@ -16,44 +16,16 @@ if (!$installation || !can_access_installation($user, $installation)) {
     exit('Forbidden');
 }
 
-$itemsStmt = db()->prepare('SELECT * FROM installation_items WHERE installation_id=:id ORDER BY sort_order,id');
-$itemsStmt->execute(['id' => $id]);
-$items = $itemsStmt->fetchAll();
-
 $commonStmt = db()->prepare("SELECT * FROM installation_photos WHERE installation_id=:id AND scope='common' ORDER BY uploaded_at");
 $commonStmt->execute(['id' => $id]);
 $commonPhotos = $commonStmt->fetchAll();
-
-$itemPhotosMap = array_fill_keys(array_map('intval', array_column($items, 'id')), []);
-if ($items) {
-    $itemIds = array_map('intval', array_column($items, 'id'));
-    $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
-    $ps = db()->prepare("SELECT * FROM installation_photos WHERE installation_item_id IN ($placeholders) ORDER BY uploaded_at");
-    $ps->execute($itemIds);
-    foreach ($ps->fetchAll() as $row) {
-        $itemPhotosMap[(int) $row['installation_item_id']][] = $row;
-    }
-}
-
-$missingImportant = [];
-$tplStmt = db()->prepare("SELECT code, title FROM photo_templates WHERE work_type_id=:wt AND scope='item' AND is_important=1 AND is_active=1 ORDER BY sort_order");
-$tplStmt->execute(['wt' => $installation['work_type_id']]);
-$importantTemplates = $tplStmt->fetchAll();
-foreach ($items as $item) {
-    $codes = array_column($itemPhotosMap[(int) $item['id']] ?? [], 'photo_code');
-    foreach ($importantTemplates as $tpl) {
-        if (!in_array($tpl['code'], $codes, true)) {
-            $missingImportant[] = $item['title'] . ': ' . $tpl['title'];
-        }
-    }
-}
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
 $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
 $verifyBaseUrl = $host !== '' ? $scheme . '://' . $host : null;
 
-$html = render_installation_pdf_html($installation, $items, $commonPhotos, $itemPhotosMap, $verifyBaseUrl);
+$html = render_installation_pdf_html($installation, $commonPhotos, $verifyBaseUrl);
 $paths = ensure_installation_dirs((string) $installation['number']);
 $pdfFile = $paths['base'] . '/documents/warranty_' . $installation['number'] . '_' . date('Ymd_His') . '.pdf';
 
@@ -95,6 +67,6 @@ db()->prepare('INSERT INTO generated_documents (installation_id, document_type, 
     'created_at' => now(),
 ]);
 
-audit_log('pdf.generated', 'installation', $id, ['number' => $installation['number'], 'missing' => $missingImportant]);
+audit_log('pdf.generated', 'installation', $id, ['number' => $installation['number']]);
 
 redirect('/download_pdf.php?id=' . $id);

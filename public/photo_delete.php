@@ -32,12 +32,6 @@ $dbs->execute(['id' => $id]);
 
 audit_log('photo.deleted', 'photo', $id, [
     'installation_id' => (int) $photo['installation_id'],
-    'installation_item_id' => (int) ($photo['installation_item_id'] ?? 0),
 ]);
-
-$itemId = (int) ($photo['installation_item_id'] ?? 0);
-if ($itemId > 0) {
-    redirect('/installation_item_edit.php?id=' . $itemId);
-}
 
 redirect('/installation_edit.php?id=' . (int) $photo['installation_id']);

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function render_installation_pdf_html(array $installation, array $items, array $commonPhotos, array $itemPhotosMap, ?string $verifyBaseUrl = null): string
+function render_installation_pdf_html(array $installation, array $commonPhotos, ?string $verifyBaseUrl = null): string
 {
     $root = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
     $branding = company_branding((int) ($installation['company_id'] ?? 0));
@@ -81,15 +81,8 @@ function render_installation_pdf_html(array $installation, array $items, array $
         <p><strong>Описание работ:</strong><br><?= nl2br(h((string) $installation['work_description'])) ?></p>
     <?php endif; ?>
     <hr>
-    <h2>Состав оборудования</h2>
-    <?php foreach ($items as $idx => $item): ?>
-        <p><strong><?= $idx + 1 ?>. <?= h((string) $item['title']) ?></strong> (<?= h((string) ($item['location'] ?? '')) ?>)<br>
-        Марка: <?= h((string) ($item['brand'] ?? '')) ?>, Модель: <?= h((string) ($item['model'] ?? '')) ?></p>
-    <?php endforeach; ?>
-    <hr>
-    <h2>Фотоотчет</h2>
     <?php if ($commonPhotos): ?>
-        <h3>Общие фото объекта</h3>
+        <h2>Фотоотчёт</h2>
         <?php foreach ($commonPhotos as $photo): ?>
             <table style="margin-bottom:8px;"><tr>
                 <td style="vertical-align:top; width:280px;"><?= $photoHtml($photo) ?></td>
@@ -97,19 +90,6 @@ function render_installation_pdf_html(array $installation, array $items, array $
             </tr></table>
         <?php endforeach; ?>
     <?php endif; ?>
-
-    <?php foreach ($items as $item): ?>
-        <?php $itemPhotos = $itemPhotosMap[(int) $item['id']] ?? []; ?>
-        <?php if ($itemPhotos): ?>
-            <h3><?= h((string) $item['title']) ?></h3>
-            <?php foreach ($itemPhotos as $photo): ?>
-                <table style="margin-bottom:8px;"><tr>
-                    <td style="vertical-align:top; width:280px;"><?= $photoHtml($photo) ?></td>
-                    <td style="vertical-align:top; padding-left:10px;"><?= h((string) $photo['title']) ?></td>
-                </tr></table>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    <?php endforeach; ?>
 
     <?php
     $number = (string) $installation['number'];

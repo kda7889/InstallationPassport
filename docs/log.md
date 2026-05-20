@@ -1,5 +1,11 @@
 # Documentation Log
 
+## 2026-05-20 (2)
+- Убран блок «элементы монтажа» — фото теперь только на уровне объекта.
+- Добавлен сворачиваемый чек-лист рекомендуемых фото на странице монтажа (рендерится из `photo_templates` по `work_type_id`).
+- Миграция `db_migrate_drop_items()` удаляет старые item-фото (файлы и записи), дропает таблицу `installation_items` и колонку `installation_photos.installation_item_id`.
+- Обновлены: README, domain-model, routes, form-contracts, storage-layout, runbook, log.
+
 ## 2026-05-20
 - Пересборка документации под Multi-tenant SaaS-релиз.
 - Обновлены: `README.md`, `docs/index.md`, `docs/roadmap.md`, `docs/cards.md`, `docs/contradictions.md`.
