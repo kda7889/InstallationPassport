@@ -3,7 +3,8 @@
     "description": "Installation Passport Web Service",
     "require": {
         "php": ">=8.1",
-        "mpdf/mpdf": "^8.2"
+        "mpdf/mpdf": "^8.2",
+        "mpdf/qrcode": "^1.2"
     },
     "config": {
         "optimize-autoloader": true,

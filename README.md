@@ -25,7 +25,7 @@
 ## Быстрый запуск
 
 1. PHP 8.1+ с расширениями: `pdo_sqlite`, `gd`, `fileinfo`, `mbstring` (обязательно), `exif`, `imagick` (рекомендуется).
-2. `composer install --no-dev --optimize-autoloader` (тянет `mpdf/mpdf`).
+2. `composer install --no-dev --optimize-autoloader` (тянет `mpdf/mpdf` и `mpdf/qrcode` — последний нужен для QR в PDF, иначе генерация падает).
 3. Web-root должен указывать на `public/`.
 4. `storage/` доступна на запись веб-пользователю.
 5. `php scripts/preflight.php` — проверка окружения.

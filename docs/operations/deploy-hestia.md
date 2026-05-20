@@ -51,14 +51,16 @@ fi
 
 Проверить, что Apache следует по симлинкам — в HestiaCP по умолчанию `Options +SymLinksIfOwnerMatch`, владелец совпадает, всё ок.
 
-## 4) Установить зависимости (mPDF)
+## 4) Установить зависимости (mPDF + QR)
 
 Composer обычно уже стоит. Если нет — `sudo apt install composer`.
 
 ```bash
 cd ~/web/doc.krdalp.ru/private/installationpassport
-composer require mpdf/mpdf --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader
 ```
+
+В `composer.json` уже прописаны `mpdf/mpdf` и `mpdf/qrcode`. **Без последнего генерация PDF падает с ошибкой `Mpdf\QrCode package was not found`**, потому что QR-код в гарантийном талоне рисуется через тег `<barcode type="QR">`.
 
 ## 5) Подготовить storage/
 

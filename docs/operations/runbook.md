@@ -32,7 +32,8 @@
 HestiaCP shared-сборка: `/home/<user>` — симлинк на `/srv/shared/<user>`. Дописать реальный путь в `open_basedir` пула PHP-FPM, см. `docs/operations/deploy-hestia.md` §8a.
 
 ### PDF не формируется
-- `composer install --no-dev --optimize-autoloader`.
+- `composer install --no-dev --optimize-autoloader` (тянет `mpdf/mpdf` и `mpdf/qrcode`).
+- Симптом `Mpdf\QrCode package was not found` означает, что в `vendor/` нет `mpdf/qrcode` — выполните `composer require mpdf/qrcode`.
 - Права записи в `storage/tmp/`.
 - Логи Apache / PHP-FPM (`tail -30`).
 
