@@ -25,8 +25,6 @@
 - `GET /dashboard.php` — auth. Список монтажей (admin видит свою компанию, installer — свои; superadmin — все, с фильтром по компании).
 - `GET/POST /installation_create.php` — auth.
 - `GET/POST /installation_edit.php?id=` — auth + ACL.
-- `GET/POST /installation_item_edit.php?id=` — auth + ACL.
-- `POST /installation_item_delete.php` — auth + ACL + CSRF.
 
 ## Photos (internal)
 

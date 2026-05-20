@@ -11,10 +11,14 @@
     └── {year}/{installation_number}/
         ├── common/photos/compressed/        # JPEG ≤2048 max-side
         ├── common/photos/thumbnails/        # JPEG ≤512 max-side
-        ├── items/{item_number}/photos/compressed/
-        ├── items/{item_number}/photos/thumbnails/
         └── documents/                       # PDF
 ```
+
+> Подкаталоги `items/...` исторически создавались, когда фото привязывались к элементам монтажа. С момента релиза «без элементов» новые фото туда не пишутся; миграция удаляет старые item-фото вместе с записями в БД, но **сами папки `items/`** на диске не убираются — оставлены на случай ручного восстановления. При желании можно вычистить вручную:
+>
+> ```bash
+> find storage/installations -type d -name items -empty -delete
+> ```
 
 ## Naming convention
 

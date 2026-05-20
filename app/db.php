@@ -73,6 +73,7 @@ function db_migrate_schema(): void
     db_migrate_multitenant();
     db_migrate_photo_stage();
     db_migrate_reviews();
+    db_migrate_drop_items();
     db_seed_photo_templates();
 
     $done = true;
@@ -159,6 +160,37 @@ function db_migrate_photo_stage(): void
     }
 }
 
+function db_migrate_drop_items(): void
+{
+    $pdo = db();
+
+    $hasItemsTable = (bool) $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='installation_items'")->fetch();
+    $hasItemColumn = _table_has_column('installation_photos', 'installation_item_id');
+    if (!$hasItemsTable && !$hasItemColumn) {
+        return;
+    }
+
+    $root = dirname(__DIR__);
+    $rows = $pdo->query("SELECT file_path, thumb_path FROM installation_photos WHERE scope = 'item'")->fetchAll();
+    foreach ($rows as $r) {
+        @unlink($root . '/' . ltrim((string) $r['file_path'], '/'));
+        @unlink($root . '/' . ltrim((string) $r['thumb_path'], '/'));
+    }
+    $pdo->exec("DELETE FROM installation_photos WHERE scope = 'item'");
+
+    $pdo->exec("UPDATE photo_templates SET scope = 'common' WHERE scope = 'item'");
+
+    if ($hasItemColumn) {
+        try {
+            $pdo->exec("ALTER TABLE installation_photos DROP COLUMN installation_item_id");
+        } catch (Throwable $e) {
+            // SQLite < 3.35 — column stays, but unused. Not fatal.
+        }
+    }
+
+    $pdo->exec("DROP TABLE IF EXISTS installation_items");
+}
+
 function db_migrate_reviews(): void
 {
     $pdo = db();
@@ -225,7 +257,7 @@ function db_seed_photo_templates(): void
         $byCode[$r['code']] = (int) $r['id'];
     }
 
-    $insert = $pdo->prepare("INSERT INTO photo_templates (work_type_id, scope, code, title, is_important, sort_order, is_active) VALUES (:work_type_id, 'item', :code, :title, :is_important, :sort_order, 1) ON CONFLICT(work_type_id, scope, code) DO NOTHING");
+    $insert = $pdo->prepare("INSERT INTO photo_templates (work_type_id, scope, code, title, is_important, sort_order, is_active) VALUES (:work_type_id, 'common', :code, :title, :is_important, :sort_order, 1) ON CONFLICT(work_type_id, scope, code) DO NOTHING");
 
     foreach ($seeds as $workCode => $rows) {
         if (!isset($byCode[$workCode])) {

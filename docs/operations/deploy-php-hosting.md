@@ -3,7 +3,7 @@
 ## 1) Требования
 - PHP 8.1+
 - Расширения: `pdo_sqlite`, `gd`, `fileinfo`, `mbstring` (обязательно), `exif`, `imagick` (рекомендуется — для HEIC).
-- Composer (для `mpdf/mpdf`).
+- Composer (для `mpdf/mpdf` и `mpdf/qrcode` — оба нужны: без второго PDF падает с `Mpdf\QrCode package was not found`).
 
 ## 2) Установка
 1. Залить проект на хостинг (через FTP / Git).

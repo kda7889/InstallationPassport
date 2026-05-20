@@ -4,27 +4,23 @@
 Required:
 - `_csrf`
 - `installation_id`
-- `scope` (`common` | `item`)
 - `photo` (file: JPEG/PNG/WebP/HEIC)
 
 Optional:
-- `installation_item_id` (required для `scope=item`)
 - `photo_code`
 - `title`
 - `photo_stage` (`before` | `during` | `after` | `other`, по умолчанию `other`)
 
+Все фото привязываются к монтажу как `scope = 'common'`. Поля `scope` и `installation_item_id` из формы больше не принимаются.
+
 ## `photo_delete.php`
-Required: `_csrf`, `photo_id`.
+Required: `_csrf`, `id`.
 
 ## `installation_create.php`
 Required: `_csrf`, `work_type_id`, `address`.
 
 ## `installation_edit.php`
-Все поля карточки + `_csrf`. `install_date` — `YYYY-MM-DD`; гарантия в месяцах пересчитывается в `warranty_until`.
-
-## `installation_item_edit.php`
-Required: `title`.
-Optional: `location`, `brand`, `model`, `indoor_serial`, `outdoor_serial`.
+Все поля карточки + `_csrf`. `install_date` — `YYYY-MM-DD`; гарантия в месяцах пересчитывается в `warranty_until`. На странице показывается сворачиваемый список «Что снять для этого типа работ» — он рендерится из `photo_templates`, ничего не отправляется на сервер.
 
 ## `users.php`
 - Создание: `name`, `email`, `password`, `role` (`admin` | `installer`); для superadmin — также `company_id`.
